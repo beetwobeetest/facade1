@@ -1,0 +1,3890 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#eef2f7" />
+  <title>비투비미술학원 3D Viewer</title>
+  <style>
+    :root{
+      --bg:#0b0d12;
+      --bg2:#151922;
+      --panel:rgba(16,18,24,.88);
+      --panel-border:rgba(255,255,255,.08);
+      --text:#f4f7fb;
+      --muted:rgba(255,255,255,.62);
+      --soft:rgba(255,255,255,.08);
+      --soft2:rgba(255,255,255,.05);
+      --accent:#7c5cff;
+      --accent2:#2dd4ff;
+      --danger:#ff5d73;
+      --shadow:0 16px 40px rgba(0,0,0,.35);
+      --canvas-bg: radial-gradient(circle at 50% 35%, #1b2130 0%, #0b0d12 75%);
+    }
+    body.light {
+      --bg:#eef2f7;
+      --bg2:#dfe5ee;
+      --panel:rgba(250,252,255,.88);
+      --panel-border:rgba(0,0,0,.08);
+      --text:#111827;
+      --muted:rgba(17,24,39,.68);
+      --soft:rgba(0,0,0,.08);
+      --soft2:rgba(0,0,0,.05);
+      --shadow:0 16px 40px rgba(0,0,0,.14);
+      --canvas-bg: radial-gradient(circle at 50% 35%, #ffffff 0%, #e8edf4 78%);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
+    button,input{font:inherit}
+    #app{position:fixed;inset:0}
+    #canvasWrap{position:absolute;inset:0;background:var(--canvas-bg);transition:box-shadow .18s ease,border-radius .18s ease}
+    canvas{display:block;width:100%;height:100%}
+    .glass{background:var(--panel);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--panel-border);box-shadow:var(--shadow)}
+    #topbar{position:absolute;top:max(12px,env(safe-area-inset-top));left:12px;right:auto;max-width:calc(100vw - 24px);width:max-content;display:flex;gap:8px;align-items:center;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;z-index:1250;pointer-events:auto}
+    #topbar::-webkit-scrollbar{display:none}
+    #topbar>*{pointer-events:auto;flex-shrink:0}
+    #topbar .pill,#topbar .btn,#topbar .brand,#topbar .badge,#topbar .pill span,#topbar .badge span{white-space:nowrap;word-break:keep-all}
+    #topbar .glass,#topbar .btn,#topbar .pill,#topbar .brand{background:transparent !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:none !important}
+    #topbar .btn.active,#topbar .pill.active{background:transparent !important;border-color:rgba(124,92,255,.65);color:var(--accent)}
+    #topbar .spacer{display:none}
+    #brandTap{position:fixed;left:12px;bottom:12px;top:auto;z-index:1000;padding:0;border:none !important;background:transparent !important;box-shadow:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;font-size:13px;font-weight:700}
+    #brandTap span{display:block}
+    .brand,.btn,.pill,.badge{border-radius:14px}
+    .brand{padding:10px 12px;display:flex;gap:8px;align-items:center;color:var(--text);font-weight:700;font-size:13px}
+    .spacer{flex:1}
+    .btn,.pill{height:40px;border:1px solid var(--panel-border);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow)}
+    .btn{width:40px;padding:0}
+    .pill{padding:0 12px;gap:6px;font-size:13px;font-weight:600}
+    .btn.active,.pill.active{background:linear-gradient(135deg, rgba(124,92,255,.32), rgba(45,212,255,.22));border-color:rgba(124,92,255,.5)}
+    .btn svg,.pill svg,.badge svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .badge{display:none;align-items:center;gap:6px;padding:9px 12px;background:var(--panel);color:var(--text);font-size:12px;font-weight:700;border:1px solid var(--panel-border);box-shadow:none}
+    #empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:5;text-align:center;padding:18px;pointer-events:none}
+    #empty.hidden{display:none}
+    #empty .box{width:84px;height:84px;border:2px dashed var(--soft);border-radius:22px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+    #empty svg{width:38px;height:38px;stroke:currentColor;fill:none;stroke-width:1.6}
+    #empty h2{margin:0;font-size:18px}
+    #empty p{margin:0;color:var(--muted);line-height:1.5;font-size:14px}
+    #panel{position:absolute;left:auto;right:0;top:0;bottom:0;width:min(390px,calc(100vw - 12px));max-height:none;display:flex;flex-direction:column;border-top-left-radius:22px;border-top-right-radius:0;border-bottom-left-radius:22px;z-index:20;transition:transform .28s ease;padding-bottom:0;border-left:1px solid var(--panel-border)}
+    #panel.collapsed{transform:translateX(calc(100% - 0px))}
+    #handle{height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;touch-action:none}
+    #handle::before{content:"";width:42px;height:5px;border-radius:999px;background:var(--soft)}
+    .panelHead{padding:0 16px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;touch-action:none}
+    .panelHead h3{margin:0;font-size:14px}
+    .count{font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(124,92,255,.18);color:#b7a7ff;border:1px solid rgba(124,92,255,.3)}
+    .tabs{display:flex;gap:4px;padding:0 16px;border-bottom:1px solid var(--panel-border);flex-shrink:0;touch-action:none}
+    .tab{flex:1;background:none;border:none;color:var(--muted);padding:11px 0;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent}
+    .tab.active{color:var(--text);border-bottom-color:var(--accent)}
+    .body{overflow:auto;flex:1;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+    .pane{display:none;padding:14px 16px 20px}
+    .pane.active{display:block}
+    .row{display:flex;gap:8px}
+    .addBtn{flex:1;height:44px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--accent),#5b8cff);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 12px 24px rgba(124,92,255,.25)}
+    .addBtn svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2.3}
+    .modelList{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+    .modelItem{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--soft2);border:1px solid var(--panel-border)}
+    .modelItem.selected{border-color:rgba(124,92,255,.55);background:rgba(124,92,255,.12)}
+    .name{flex:1;min-width:0;color:var(--text);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+    .ext{display:inline-block;margin-right:7px;padding:2px 6px;border-radius:6px;background:rgba(45,212,255,.12);color:#37d7ff;font-size:10px;font-weight:700}
+    .miBtn{width:32px;height:32px;border-radius:10px;border:1px solid var(--panel-border);background:var(--soft2);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .modelActions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+    .miBtn.off{opacity:.45}
+    .miBtn.danger{color:var(--danger)}
+    .miBtn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+    .emptyList,.disabledMsg{padding:30px 10px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5}
+    .section{margin-bottom:18px}
+    .section h4{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+    .toggleLabel{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:0;text-transform:none}
+    .card{padding:12px;border-radius:14px;background:var(--soft2);border:1px solid var(--panel-border)}
+    .dragBtns{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+    .miniBtn{flex:1 1 calc(50% - 4px);height:36px;border-radius:10px;border:1px solid var(--panel-border);background:var(--panel);color:var(--text);font-size:12px;font-weight:700;cursor:pointer}
+    .miniBtn.active{background:linear-gradient(135deg, rgba(124,92,255,.35), rgba(45,212,255,.2));border-color:rgba(124,92,255,.5)}
+    .hint{font-size:11px;color:var(--muted);line-height:1.45;margin-top:7px}
+    .ctrl{display:grid;grid-template-columns:22px 1fr 66px;align-items:center;gap:10px;margin-bottom:8px}
+    .axis{font-size:12px;font-weight:800;text-align:center}.x{color:#ff7c7c}.y{color:#67eb8d}.z{color:#6ab2ff}.u{color:#ffcf70}
+    input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--soft);border-radius:999px;outline:none}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:2px solid #fff;box-shadow:0 2px 10px rgba(124,92,255,.35)}
+    input[type=number]{width:100%;height:34px;border-radius:10px;border:1px solid var(--panel-border);background:var(--soft2);color:var(--text);text-align:center}
+    .resetBtn{width:100%;height:40px;border-radius:12px;border:1px solid var(--panel-border);background:var(--soft2);color:var(--text);font-weight:700;cursor:pointer}
+    .resetBtn.active{background:linear-gradient(135deg, rgba(124,92,255,.35), rgba(45,212,255,.2));border-color:rgba(124,92,255,.5)}
+    body.busy{cursor:progress}
+    .loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:2000;background:rgba(6,8,12,.18);pointer-events:auto}
+    .loading.show{display:flex}
+    .loadingCard{display:flex;align-items:center;gap:12px;padding:18px 22px;border-radius:18px;min-width:min(320px,calc(100vw - 32px));max-width:min(460px,calc(100vw - 32px))}
+    .loadingText{display:flex;flex-direction:column;gap:4px}
+    #loadingTitle{font-size:13px;font-weight:700;white-space:pre-line;line-height:1.35}
+    #loadingTitle.brandTitle{display:flex;flex-direction:column;gap:2px}
+    #loadingTitle .loadingBrandIntro{font-size:13px;font-weight:500;letter-spacing:.01em}
+    #loadingTitle .loadingBrandName{font-size:13px;font-weight:600}
+    #loadingDetail{font-size:12px;color:var(--muted);line-height:1.45;white-space:pre-line}
+    .spin{width:22px;height:22px;border:3px solid var(--soft);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    #toasts{position:absolute;top:max(68px,calc(env(safe-area-inset-top) + 54px));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:120;max-width:90%;pointer-events:none}
+    .toast{padding:10px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--panel-border);box-shadow:var(--shadow);font-size:13px;color:var(--text);text-align:center}
+    #fileInput,#presetFileInput{display:none}
+    textarea,input[type=text],input[type=url]{width:100%;border-radius:12px;border:1px solid var(--panel-border);background:var(--soft2);color:var(--text);padding:10px 12px}
+    textarea{min-height:88px;resize:vertical;line-height:1.45}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .subtleBtn{height:40px;border-radius:12px;border:1px solid var(--panel-border);background:var(--soft2);color:var(--text);font-weight:700;cursor:pointer}
+    #presetPanel{position:absolute;right:12px;bottom:max(12px,env(safe-area-inset-bottom));width:min(360px,calc(100vw - 24px));max-height:min(74vh,680px);overflow:auto;z-index:60;padding:14px 14px 16px;border-radius:18px;display:none}
+    #presetPanel.show{display:block}
+    #presetPanel h3{margin:0;font-size:14px}
+    .adminTop{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+    .adminClose{width:34px;height:34px;border-radius:10px;border:1px solid var(--panel-border);background:var(--soft2);color:var(--text);cursor:pointer}
+    .tiny{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px}
+    body.mode-2d{background:#d9dde3}
+    body.mode-2d #app{background:#d9dde3}
+    body.mode-2d #canvasWrap{inset:auto;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:0;overflow:hidden;border:none;box-shadow:none}
+    @media (orientation: portrait){body.mode-2d #canvasWrap{width:min(100vw,calc(100vh * .72));height:min(100vh,calc(100vw / .72));}}
+    @media (orientation: landscape){body.mode-2d #canvasWrap{width:min(100vw,calc(100vh / .72));height:min(100vh,calc(100vw * .72));}}
+    #layoutGrid{position:absolute;inset:0;display:none;pointer-events:none;z-index:40}
+    body.mode-2d #layoutGrid{display:block}
+    #layoutGrid .gridLine{position:absolute;opacity:.78}
+    #layoutGrid .gridLine.v{top:0;bottom:0;width:1px;background:repeating-linear-gradient(to bottom, rgba(148,163,184,.78) 0 4px, transparent 4px 13px)}
+    #layoutGrid .gridLine.h{left:0;right:0;height:1px;background:repeating-linear-gradient(to right, rgba(148,163,184,.78) 0 4px, transparent 4px 13px)}
+    #layoutGrid .v1{left:33.333%}
+    #layoutGrid .v2{left:66.666%}
+    #layoutGrid .h1{top:33.333%}
+    #layoutGrid .h2{top:66.666%}
+    body.mode-2d #projBtn{display:none !important}
+    body.mode-2d #dragGround{display:none}
+    #layoutHud{position:absolute;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);display:none;z-index:1100;pointer-events:none;gap:4px;align-items:center}
+    body.mode-2d #layoutHud{display:flex}
+    #layoutHud .hudGroup{position:static;display:flex;gap:4px;pointer-events:none}
+    #layoutHud .hudGroup-view{order:1}
+    #layoutHud .hudGroup-main{order:2;min-width:unset}
+    #layoutHud .hudBtn{width:54px;height:38px;border-radius:14px;border:1px solid rgba(82,92,110,.18);background:rgba(255,255,255,.82);color:#1f2937;font-size:11px;font-weight:700;box-shadow:0 10px 24px rgba(58,67,83,.12);cursor:pointer;pointer-events:auto;padding:0;flex:none}
+    #layoutHud .hudBtn.active{background:linear-gradient(135deg, rgba(124,92,255,.3), rgba(45,212,255,.18));border-color:rgba(124,92,255,.45);color:#111827}
+    #modeToast{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1300;display:none;pointer-events:none}
+    #modeToast.show{display:block}
+    #modeToast .modeToastCard{padding:12px 18px;border-radius:16px;background:rgba(17,24,39,.78);color:#fff;font-size:15px;font-weight:700;letter-spacing:.02em;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 14px 38px rgba(0,0,0,.26)}
+    #modeToggleBtn{min-width:84px}
+    #viewportMask{position:absolute;inset:0;z-index:1180;background:rgba(238,242,247,.88);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .14s ease, visibility 0s linear .14s}
+    body.viewport-switching #viewportMask{opacity:1;visibility:visible;transition:opacity .1s ease, visibility 0s}
+    body.viewport-switching #canvasWrap, body.viewport-switching #layoutHud, body.viewport-switching #layoutGrid{transition:none !important}
+    #panel,#presetPanel{--panel:rgba(250,252,255,.94);--panel-border:rgba(0,0,0,.08);--text:#111827;--muted:rgba(17,24,39,.68);--soft:rgba(0,0,0,.08);--soft2:rgba(0,0,0,.05);background:rgba(250,252,255,.94) !important;color:#111827 !important}
+    #panel .tab,#panel .name,#panel .emptyList,#panel .disabledMsg,#presetPanel,#presetPanel h3,#presetPanel .tiny{color:var(--text)}
+    body.mode-2d, body.mode-2d #app{background:#d9dde3 !important}
+    .hideIn2D{display:inherit}
+    body.mode-2d .hideIn2D{display:none !important}
+
+    @media (min-width: 860px){
+      #panel{width:390px}
+      #panel.collapsed{transform:translateX(calc(100% - 0px))}
+      #handle{display:none}
+      .panelHead{padding-top:18px}
+      #topbar{right:auto}
+    }
+  </style>
+</head>
+<body class="light">
+<div id="app">
+  <div id="canvasWrap"><div id="layoutGrid" aria-hidden="true"><span class="gridLine v v1"></span><span class="gridLine v v2"></span><span class="gridLine h h1"></span><span class="gridLine h h2"></span></div></div>
+  <div id="viewportMask" aria-hidden="true"></div>
+
+  <div id="topbar">
+    <button id="modeToggleBtn" class="pill glass active" title="3D / 2D 전환"><span id="modeToggleLabel">3D</span></button>
+    <div id="brandTap" class="brand glass"><span>비투비미술학원</span></div>
+    <button id="dragBadge" class="badge"><svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg><span>이동 모드</span></button>
+    <div class="spacer"></div>
+    <button id="themeBtn" class="btn glass" title="배경 전환"><svg viewBox="0 0 24 24"><path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.36-6.36-.7.7M6.34 17.66l-.7.7m0-12.72.7.7m11.32 11.32.7.7M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"/></svg></button>
+    <button id="projBtn" class="pill glass"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg><span id="projLabel">원근</span></button>
+    <button id="floorBtn" class="pill glass active" title="바닥 모드"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span id="floorLabel">흰 바닥</span></button>
+    <button id="boxBtn" class="pill glass" title="투시박스"><svg viewBox="0 0 24 24"><path d="M3 7.5 12 3l9 4.5-9 4.5L3 7.5Z"/><path d="M3 7.5v9L12 21"/><path d="M21 7.5v9L12 21"/><path d="M12 12v9"/></svg><span>투시박스</span></button>
+    <button id="homeViewBtn" class="btn glass" title="초기 시점"><svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h14v-9.5"/></svg></button>
+    <button id="quickSaveBtn" class="pill glass" title="장면 저장"><span>저장</span></button>
+    <button id="quickLoadBtn" class="pill glass" title="장면 열기"><span>열기</span></button>
+    <button id="fsBtn" class="btn glass" title="전체화면"><svg viewBox="0 0 24 24"><path d="M8 3H3v5"/><path d="M16 3h5v5"/><path d="M21 16v5h-5"/><path d="M3 16v5h5"/></svg></button>
+    <button id="captureBtn" class="btn glass" title="장면 캡처"><svg viewBox="0 0 24 24"><path d="M4 7h4l2-2h4l2 2h4a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+    <button id="panelBtn" class="btn glass" title="패널"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  </div>
+
+  <div id="layoutHud" aria-label="2D 전용 버튼">
+    <div id="layoutHudView" class="hudGroup hudGroup-view">
+      <button id="rotateViewCCWBtn" class="hudBtn">↺ 회전</button>
+      <button id="rotateViewCWBtn" class="hudBtn">↻ 회전</button>
+    </div>
+    <div id="layoutHudMain" class="hudGroup hudGroup-main">
+      <button id="layoutMoveBtn" class="hudBtn">이동</button>
+      <button id="layoutRotateBtn" class="hudBtn">회전</button>
+      <button id="layoutOffBtn" class="hudBtn">끄기</button>
+      <button id="depthFrontBtn" class="hudBtn">앞으로</button>
+      <button id="depthBackBtn" class="hudBtn">뒤로</button>
+    </div>
+  </div>
+
+  <div id="empty">
+    <div class="box"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.27 6.96 8.73 5.05 8.73-5.05M12 22.08V12"/></svg></div>
+    <h2>3D 파일을 업로드하세요</h2>
+    <p>소재 추가 버튼으로 GLB / GLTF / OBJ / STL / FBX 파일을 불러오고<br>소재 선택 후 직접 드래그해서 이동할 수 있습니다.</p>
+  </div>
+
+  <div id="panel" class="glass">
+    <div id="handle"></div>
+    <div class="panelHead"><h3>소재 관리 <span id="modelCount" class="count">0</span></h3></div>
+    <div class="tabs">
+      <button class="tab active" data-tab="models">소재</button>
+      <button class="tab" data-tab="transform">변환/이동</button>
+      <button class="tab" data-tab="texture">질감</button>
+      <button class="tab" data-tab="settings">조명</button>
+    </div>
+    <div class="body">
+      <div id="pane-models" class="pane active">
+        <div class="row"><button id="addBtn" class="addBtn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>소재 추가</button></div>
+        <div id="modelList" class="modelList"><div class="emptyList">업로드된 소재가 없습니다</div></div>
+      </div>
+
+      <div id="pane-transform" class="pane">
+        <div id="disabledMsg" class="disabledMsg">소재를 선택하면 변환/이동 제어가 활성화됩니다</div>
+        <div id="transformWrap" style="display:none">
+          <div class="section card">
+            <div class="dragBtns">
+              <button id="dragScreen" class="miniBtn">이동 · 화면</button>
+              <button id="dragGround" class="miniBtn">이동 · 바닥</button>
+              <button id="dragRotate" class="miniBtn">회전</button>
+              <button id="dragOff" class="miniBtn">끄기</button>
+            </div>
+          </div>
+
+          <div class="section">
+            <h4>크기 <label class="toggleLabel"><input id="uniformScale" type="checkbox" checked> 균등</label></h4>
+            <div id="uniformRow" class="ctrl"><div class="axis u">U</div><input id="suRange" type="range" min="0.05" max="20" step="0.01" value="1"><input id="suNum" type="number" min="0.05" max="20" step="0.01" value="1"></div>
+            <div id="scaleXYZ" style="display:none">
+              <div class="ctrl"><div class="axis x">X</div><input data-kind="scale" data-axis="x" type="range" min="0.05" max="20" step="0.01" value="1"><input data-kind="scale" data-axis="x" type="number" min="0.05" max="20" step="0.01" value="1"></div>
+              <div class="ctrl"><div class="axis y">Y</div><input data-kind="scale" data-axis="y" type="range" min="0.05" max="20" step="0.01" value="1"><input data-kind="scale" data-axis="y" type="number" min="0.05" max="20" step="0.01" value="1"></div>
+              <div class="ctrl"><div class="axis z">Z</div><input data-kind="scale" data-axis="z" type="range" min="0.05" max="20" step="0.01" value="1"><input data-kind="scale" data-axis="z" type="number" min="0.05" max="20" step="0.01" value="1"></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h4>회전</h4>
+            <div class="ctrl"><div class="axis x">X</div><input data-kind="rotation" data-axis="x" type="range" min="-180" max="180" step="1" value="0"><input data-kind="rotation" data-axis="x" type="number" min="-180" max="180" step="1" value="0"></div>
+            <div class="ctrl"><div class="axis y">Y</div><input data-kind="rotation" data-axis="y" type="range" min="-180" max="180" step="1" value="0"><input data-kind="rotation" data-axis="y" type="number" min="-180" max="180" step="1" value="0"></div>
+            <div class="ctrl"><div class="axis z">Z</div><input data-kind="rotation" data-axis="z" type="range" min="-180" max="180" step="1" value="0"><input data-kind="rotation" data-axis="z" type="number" min="-180" max="180" step="1" value="0"></div>
+          </div>
+
+          <div class="section">
+            <h4>위치</h4>
+            <div class="ctrl"><div class="axis x">X</div><input data-kind="position" data-axis="x" type="range" min="-20" max="20" step="0.05" value="0"><input data-kind="position" data-axis="x" type="number" min="-20" max="20" step="0.05" value="0"></div>
+            <div class="ctrl"><div class="axis y">Y</div><input data-kind="position" data-axis="y" type="range" min="-20" max="20" step="0.05" value="0"><input data-kind="position" data-axis="y" type="number" min="-20" max="20" step="0.05" value="0"></div>
+            <div class="ctrl"><div class="axis z">Z</div><input data-kind="position" data-axis="z" type="range" min="-20" max="20" step="0.05" value="0"><input data-kind="position" data-axis="z" type="number" min="-20" max="20" step="0.05" value="0"></div>
+          </div>
+
+          <button id="toggleFloorPlacement" class="resetBtn" style="margin-bottom:8px">바닥에 배치</button>
+          <button id="resetTransform" class="resetBtn">초기화</button>
+        </div>
+      </div>
+
+      <div id="pane-texture" class="pane">
+        <div id="textureDisabledMsg" class="disabledMsg">소재를 선택하면 질감 제어가 활성화됩니다</div>
+        <div id="textureWrap" style="display:none">
+          <div class="section card">
+            <h4>질감 타입</h4>
+            <div class="dragBtns">
+              <button id="materialMetal" class="miniBtn">금속</button>
+              <button id="materialGlass" class="miniBtn">유리</button>
+              <button id="materialGeneral" class="miniBtn">일반</button>
+              <button id="materialReset" class="miniBtn">초기화</button>
+            </div>
+            <div id="materialModeHint" class="hint">현재: 원본 유지</div>
+          </div>
+          <div id="textureStrengthControls" style="display:none" aria-hidden="true">
+            <input id="metalReflectivity" type="hidden" value="1.15">
+            <input id="metalReflectivityNum" type="hidden" value="1.15">
+            <input id="glassTransmission" type="hidden" value="0.9">
+            <input id="glassTransmissionNum" type="hidden" value="0.9">
+            <input id="glassOpacity" type="hidden" value="0.92">
+            <input id="glassOpacityNum" type="hidden" value="0.92">
+          </div>
+        </div>
+      </div>
+
+      <div id="pane-settings" class="pane">
+        <div class="section">
+          <h4>조명</h4>
+          <div class="ctrl"><div class="axis u">R</div><input id="lightAngleRange" type="range" min="0" max="360" step="1" value="45"><input id="lightAngleNum" type="number" min="0" max="360" step="1" value="45"></div>
+          <div class="ctrl"><div class="axis y">H</div><input id="lightHeightRange" type="range" min="-10" max="30" step="0.1" value="10"><input id="lightHeightNum" type="number" min="-10" max="30" step="0.1" value="10"></div>
+          <button id="resetLight" class="resetBtn">초기화</button>
+        </div>
+        <div class="section">
+          <h4>밝기</h4>
+          <div class="ctrl"><div class="axis u">L</div><input id="lightIntensity" type="range" min="1" max="5" step="1" value="3"><input id="lightIntensityNum" type="number" min="1" max="5" step="1" value="3"></div>
+        </div>
+        <div class="section">
+          <h4>포인트</h4>
+          <button id="pointLightToggle" class="resetBtn">포인트 켜기</button>
+          <div class="ctrl" style="margin-top:8px"><div class="axis u">P</div><input id="pointLightIntensity" type="range" min="0" max="5" step="0.1" value="2.4"><input id="pointLightIntensityNum" type="number" min="0" max="5" step="0.1" value="2.4"></div>
+        </div>
+        <div class="section">
+          <h4>반사광</h4>
+          <button id="rimLightToggle" class="resetBtn">반사광 끄기</button>
+          <div class="ctrl" style="margin-top:8px"><div class="axis u">R</div><input id="rimLightIntensity" type="range" min="0" max="2" step="0.05" value="0.82"><input id="rimLightIntensityNum" type="number" min="0" max="2" step="0.05" value="0.82"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="presetPanel" class="glass">
+    <div class="adminTop">
+      <h3>장면 번들</h3>
+      <button id="presetCloseBtn" class="adminClose">✕</button>
+    </div>
+
+    <div class="section card">
+      <div style="font-size:12px;font-weight:700;color:var(--text)">ZIP 저장·열기</div>
+      <div class="tiny">현재 장면과 업로드한 로컬 소재 파일까지 함께 ZIP으로 저장합니다. 배포 사이트 안에 이 ZIP을 넣고 <b>?bundle=/bundles/scene.zip</b> 링크를 쓰면 상대방이 링크만 열어도 같은 장면을 볼 수 있습니다.</div>
+      <input id="presetName" type="text" placeholder="scene-bundle">
+      <div class="row2" style="margin-top:8px">
+        <button id="downloadPresetBtn" class="subtleBtn">장면 ZIP 저장</button>
+        <button id="loadPresetFileBtn" class="subtleBtn">장면 ZIP 열기</button>
+      </div>
+      <div class="tiny" style="margin-top:8px">ZIP 안에는 <b>scene.json</b>과 현재 장면에 사용된 모델 파일이 함께 들어갑니다. 빠른 배포용 하이브리드 방식으로는 ZIP을 풀어 <b>scene.json + models/</b> 폴더를 올린 뒤 <b>?scene=/scenes/name/scene.json</b> 링크도 사용할 수 있습니다.</div>
+    </div>
+  </div>
+  <div id="loading" class="loading">
+    <div class="loadingCard glass">
+      <div class="spin"></div>
+      <div class="loadingText">
+        <div id="loadingTitle">소재 로딩 중...</div>
+        <div id="loadingDetail"></div>
+      </div>
+    </div>
+  </div>
+  <div id="modeToast"><div class="modeToastCard" id="modeToastText">공간 모드</div></div>
+  <div id="toasts"></div>
+  <input id="fileInput" type="file" accept=".glb,.gltf,.obj,.stl,.fbx" multiple>
+  <input id="presetFileInput" type="file" accept=".zip,application/zip">
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import JSZip from 'https://esm.sh/jszip@3.10.1';
+
+const qs = s => document.querySelector(s);
+const qsa = s => [...document.querySelectorAll(s)];
+const state = {
+  models: [],
+  nextId: 1,
+  selectedId: null,
+  projection: 'perspective',
+  dragMode: 'off',
+  dragging: false,
+  dragMoved: false,
+  pinchScaling: false,
+  pinchDistance: 0,
+  rotateStart: { x: 0, y: 0 },
+  theme: 'light',
+  showGrid: false,
+  floorMode: 'white',
+  floorPlaced: false,
+  handleDragging: false,
+  activeHandleAxis: '',
+  handleStartX: 0,
+  handleStartY: 0,
+  handleStartRotationY: 0,
+  handleStartRotationX: 0,
+  handleStartRotationZ: 0,
+  activeMoveAxis: '',
+  handleStartPosition: { x:0, y:0, z:0 },
+  boxOnly: false,
+  pointLightOn: false,
+  rimLightOn: true,
+  pointLightIntensity: 1.1,
+  rimLightIntensity: 0.82,
+  lightAngle: 135,
+  lightHeight: 13.8,
+  lightRadius: 11.6,
+  metalReflectivity: 1.15,
+  glassTransmission: 0.9,
+  glassOpacity: 0.92,
+  reflectionTick: 0,
+  loadingCounter: 0,
+  uiLocked: false,
+  loadingTitle: '소재 로딩 중...',
+  loadingDetail: '',
+  suspendReflections: false,
+  deferTextureStats: false,
+  deferredMaterialRefreshTicket: 0,
+  viewMode: '3d',
+  layout2d: null,
+  return3dView: null,
+  modeToastTimer: null,
+  sceneRollDeg: 0
+};
+const DEFAULT_LIGHT = { angle:135, height:13.8, radius:11.6, intensity:3 };
+const BRAND_LOADING_TITLE = '미대입시 전문 교육\n비투비미술학원';
+const TWO_D_ASPECT = 0.72;
+const MODE_TOAST_LABELS = { '3d': '공간 모드', '2d': '배치 모드' };
+
+const canvasWrap = qs('#canvasWrap');
+const scene = new THREE.Scene();
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.7;
+const maxTextureAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy?.() || 1);
+canvasWrap.appendChild(renderer.domElement);
+
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+const envRenderTarget = pmremGenerator.fromScene(new RoomEnvironment(renderer), 0.03);
+scene.environment = null;
+pmremGenerator.dispose();
+
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+const ktx2Loader = new KTX2Loader();
+ktx2Loader.setTranscoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/basis/');
+ktx2Loader.detectSupport(renderer);
+const gltfLoader = new GLTFLoader();
+gltfLoader.setDRACOLoader(dracoLoader);
+gltfLoader.setKTX2Loader(ktx2Loader);
+gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+
+const perspectiveCam = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+perspectiveCam.position.set(4,3,5);
+const orthoCam = new THREE.OrthographicCamera(-5,5,5,-5,0.1,1000);
+orthoCam.position.copy(perspectiveCam.position);
+let camera = perspectiveCam;
+
+let controls = new OrbitControls(camera, renderer.domElement);
+function applyControls(){
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.screenSpacePanning = true;
+  controls.minDistance = 0.5;
+  controls.maxDistance = 150;
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+}
+applyControls();
+controls.target.set(0,1,0);
+let homeView = null;
+function saveHomeView(){
+  homeView = {
+    perspectivePos: perspectiveCam.position.clone(),
+    orthoPos: orthoCam.position.clone(),
+    target: controls.target.clone(),
+    ortho: { left: orthoCam.left, right: orthoCam.right, top: orthoCam.top, bottom: orthoCam.bottom }
+  };
+}
+function restoreHomeView(){
+  if (!homeView) return;
+  perspectiveCam.position.copy(homeView.perspectivePos);
+  orthoCam.position.copy(homeView.orthoPos);
+  controls.target.copy(homeView.target);
+  orthoCam.left = homeView.ortho.left;
+  orthoCam.right = homeView.ortho.right;
+  orthoCam.top = homeView.ortho.top;
+  orthoCam.bottom = homeView.ortho.bottom;
+  perspectiveCam.updateProjectionMatrix();
+  orthoCam.updateProjectionMatrix();
+  camera.updateProjectionMatrix();
+  controls.update();
+  updateSelectionVisuals();
+  if (state.viewMode === '2d') sync2DViewFromCurrentCamera({ preserveRoll:true, refreshLight:true });
+  toast('초기 시점으로 복귀');
+}
+saveHomeView();
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.0); scene.add(ambient);
+const hemi = new THREE.HemisphereLight(0xffffff, 0x223344, 0.0); scene.add(hemi);
+const dirLight = new THREE.DirectionalLight(0xffffff, DEFAULT_LIGHT.intensity);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(4096,4096);
+dirLight.shadow.radius = 1.2;
+dirLight.shadow.bias = -0.00004;
+dirLight.shadow.normalBias = 0.0012;
+dirLight.shadow.camera.near = 0.5;
+dirLight.shadow.camera.far = 80;
+dirLight.shadow.camera.left = -20;
+dirLight.shadow.camera.right = 20;
+dirLight.shadow.camera.top = 20;
+dirLight.shadow.camera.bottom = -20;
+scene.add(dirLight);
+const rimLight = new THREE.DirectionalLight(0xe7f0ff, 0.62);
+rimLight.castShadow = false;
+scene.add(rimLight);
+const sceneLightTarget = new THREE.Object3D();
+scene.add(sceneLightTarget);
+dirLight.target = sceneLightTarget;
+rimLight.target = sceneLightTarget;
+const pointLights = Array.from({ length: 30 }, () => {
+  const light = new THREE.PointLight(0xffffff, 0, 3.4, 3.0);
+  light.castShadow = false;
+  light.visible = false;
+  scene.add(light);
+  return light;
+});
+const reflectionRenderTarget = new THREE.WebGLCubeRenderTarget(128, {
+  type: THREE.HalfFloatType,
+  generateMipmaps: true,
+  minFilter: THREE.LinearMipmapLinearFilter
+});
+const reflectionCubeCamera = new THREE.CubeCamera(0.1, 120, reflectionRenderTarget);
+scene.add(reflectionCubeCamera);
+
+const whiteFloorMaterial = new THREE.MeshStandardMaterial({ color:0xf7f7f7, roughness:0.97, metalness:0.0 });
+const reflectionFloorMaterial = new THREE.MeshStandardMaterial({ color:0xf4f4f4, roughness:0.965, metalness:0.0, envMapIntensity:0.18 });
+const shadowFloorMaterial = new THREE.ShadowMaterial({ opacity:.3 });
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200,200), whiteFloorMaterial);
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = false; ground.position.y = -0.002; scene.add(ground);
+const reflectionFloor = new THREE.Mesh(new THREE.PlaneGeometry(200,200), reflectionFloorMaterial);
+reflectionFloor.rotation.x = -Math.PI/2; reflectionFloor.receiveShadow = false; reflectionFloor.position.y = -0.004; reflectionFloor.visible = false; scene.add(reflectionFloor);
+const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(200,200), shadowFloorMaterial);
+shadowCatcher.rotation.x = -Math.PI/2; shadowCatcher.receiveShadow = true; shadowCatcher.position.y = 0.002; scene.add(shadowCatcher);
+const glassShadowCanvas = document.createElement('canvas');
+glassShadowCanvas.width = 512;
+glassShadowCanvas.height = 512;
+const glassShadowCtx = glassShadowCanvas.getContext('2d');
+const glassShadowTexture = new THREE.CanvasTexture(glassShadowCanvas);
+glassShadowTexture.needsUpdate = true;
+const glassShadowMaterial = new THREE.MeshBasicMaterial({ map: glassShadowTexture, transparent:true, depthWrite:false, opacity:1, toneMapped:false });
+const glassShadowOverlay = new THREE.Mesh(new THREE.PlaneGeometry(1,1), glassShadowMaterial);
+glassShadowOverlay.rotation.x = -Math.PI/2;
+glassShadowOverlay.position.y = 0.0035;
+glassShadowOverlay.visible = false;
+glassShadowOverlay.renderOrder = 3;
+scene.add(glassShadowOverlay);
+let grid = new THREE.GridHelper(80, 80, 0x788393, 0x909baa); grid.material.transparent = true; grid.material.opacity = .7; scene.add(grid);
+const selectionColor = 0x38acce;
+const handleColor = 0xff00ff;
+const selectionBox = new THREE.BoxHelper(undefined, selectionColor); selectionBox.visible = false; scene.add(selectionBox);
+const guideMaterial = new THREE.LineBasicMaterial({ color:selectionColor, transparent:true, opacity:.95, depthTest:true, depthWrite:false });
+const guideGeometry = new THREE.BufferGeometry();
+const selectionGuides = new THREE.LineSegments(guideGeometry, guideMaterial);
+selectionGuides.visible = false;
+selectionGuides.renderOrder = 11;
+scene.add(selectionGuides);
+
+function createRingHandle(axis){
+  const pts = [];
+  const segments = 96;
+  for (let i = 0; i < segments; i++) {
+    const a = (i / segments) * Math.PI * 2;
+    pts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0));
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ color:getAxisColor(axis), transparent:true, opacity:.82, depthTest:false });
+  const line = new THREE.LineLoop(geo, mat);
+  line.userData.handleAxis = axis;
+  line.renderOrder = 12;
+  if (axis === 'y') line.rotation.x = Math.PI / 2;
+  if (axis === 'x') line.rotation.y = Math.PI / 2;
+  line.visible = false;
+  scene.add(line);
+  return line;
+}
+
+const rotateHandleY = createRingHandle('y');
+const rotateHandleX = createRingHandle('x');
+const rotateHandleZ = createRingHandle('z');
+
+function createMoveGuide(axis){
+  const pts = [new THREE.Vector3(0,0,0), new THREE.Vector3(1,0,0)];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const color = getAxisColor(axis);
+  const mat = new THREE.LineBasicMaterial({ color, transparent:true, opacity:0.78, depthTest:false });
+  const line = new THREE.Line(geo, mat);
+  if (axis === 'y') line.rotation.z = Math.PI / 2;
+  if (axis === 'z') line.rotation.y = -Math.PI / 2;
+  line.userData.moveAxis = axis;
+  line.renderOrder = 12;
+  line.visible = false;
+  scene.add(line);
+  return line;
+}
+
+const moveGuideX = createMoveGuide('x');
+const moveGuideY = createMoveGuide('y');
+const moveGuideZ = createMoveGuide('z');
+
+function updateSelectionGuides(box){
+  const size = new THREE.Vector3(
+    box.max.x - box.min.x,
+    box.max.y - box.min.y,
+    box.max.z - box.min.z
+  );
+  const inset = Math.max(Math.max(size.x, size.y, size.z) * 0.002, 0.0005);
+  const minX = box.min.x + inset, maxX = box.max.x - inset;
+  const minY = box.min.y + inset, maxY = box.max.y - inset;
+  const minZ = box.min.z + inset, maxZ = box.max.z - inset;
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const cz = (minZ + maxZ) / 2;
+  const pts = [];
+  const pushLine = (ax, ay, az, bx, by, bz) => {
+    pts.push(ax, ay, az, bx, by, bz);
+  };
+
+  pushLine(minX, minY, minZ, maxX, minY, minZ);
+  pushLine(maxX, minY, minZ, maxX, minY, maxZ);
+  pushLine(maxX, minY, maxZ, minX, minY, maxZ);
+  pushLine(minX, minY, maxZ, minX, minY, minZ);
+
+  pushLine(minX, maxY, minZ, maxX, maxY, minZ);
+  pushLine(maxX, maxY, minZ, maxX, maxY, maxZ);
+  pushLine(maxX, maxY, maxZ, minX, maxY, maxZ);
+  pushLine(minX, maxY, maxZ, minX, maxY, minZ);
+
+  pushLine(minX, minY, minZ, minX, maxY, minZ);
+  pushLine(maxX, minY, minZ, maxX, maxY, minZ);
+  pushLine(maxX, minY, maxZ, maxX, maxY, maxZ);
+  pushLine(minX, minY, maxZ, minX, maxY, maxZ);
+
+  pushLine(minX, cy, maxZ, maxX, cy, maxZ);
+  pushLine(cx, minY, maxZ, cx, maxY, maxZ);
+  pushLine(minX, cy, minZ, maxX, cy, minZ);
+  pushLine(cx, minY, minZ, cx, maxY, minZ);
+
+  pushLine(minX, cy, minZ, minX, cy, maxZ);
+  pushLine(minX, minY, cz, minX, maxY, cz);
+  pushLine(maxX, cy, minZ, maxX, cy, maxZ);
+  pushLine(maxX, minY, cz, maxX, maxY, cz);
+
+  pushLine(minX, maxY, cz, maxX, maxY, cz);
+  pushLine(cx, maxY, minZ, cx, maxY, maxZ);
+  pushLine(minX, minY, cz, maxX, minY, cz);
+  pushLine(cx, minY, minZ, cx, minY, maxZ);
+
+  selectionGuides.geometry.dispose();
+  selectionGuides.geometry = new THREE.BufferGeometry();
+  selectionGuides.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
+}
+
+function updateSelectionVisuals(){
+  const m = getModel();
+  const showBox = !!(m && m.visible && state.boxOnly);
+  const moveModeActive = state.dragMode === 'screen' || state.dragMode === 'ground';
+  const showRotateHandles = !!(m && m.visible && !state.boxOnly && state.dragMode === 'rotate');
+  const showMoveHandles = !!(m && m.visible && moveModeActive && !state.boxOnly);
+  selectionBox.visible = false;
+  selectionGuides.visible = showBox;
+  rotateHandleY.visible = showRotateHandles;
+  rotateHandleX.visible = showRotateHandles;
+  rotateHandleZ.visible = showRotateHandles;
+  moveGuideX.visible = showMoveHandles;
+  moveGuideY.visible = showMoveHandles;
+  moveGuideZ.visible = showMoveHandles && state.viewMode !== '2d';
+  if (!showBox && !showRotateHandles && !showMoveHandles) return;
+  const box = new THREE.Box3().setFromObject(m.object);
+  if (box.isEmpty()) {
+    selectionBox.visible = false;
+    selectionGuides.visible = false;
+    rotateHandleY.visible = false;
+    rotateHandleX.visible = false;
+    rotateHandleZ.visible = false;
+    moveGuideX.visible = false;
+    moveGuideY.visible = false;
+    moveGuideZ.visible = false;
+    return;
+  }
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  box.getSize(size);
+  box.getCenter(center);
+  const radius = Math.max(size.x, size.y, size.z, 0.9) * 0.52;
+  if (showBox) updateSelectionGuides(box);
+  rotateHandleY.scale.setScalar(radius);
+  rotateHandleX.scale.setScalar(radius);
+  rotateHandleZ.scale.setScalar(radius);
+  rotateHandleY.position.copy(center);
+  rotateHandleX.position.copy(center);
+  rotateHandleZ.position.copy(center);
+  const guideLen = Math.max(size.x, size.y, size.z, 1) * 0.58;
+  moveGuideX.scale.setScalar(guideLen);
+  moveGuideY.scale.setScalar(guideLen);
+  moveGuideZ.scale.setScalar(guideLen);
+  moveGuideX.position.copy(center);
+  moveGuideY.position.copy(center);
+  moveGuideZ.position.copy(center);
+  if (state.viewMode === '2d') {
+    const forward = camera.getWorldDirection(new THREE.Vector3()).normalize();
+    const up = camera.up.clone().normalize();
+    const right = new THREE.Vector3().crossVectors(forward, up).normalize();
+    moveGuideX.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0), right);
+    moveGuideY.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0), up);
+  } else {
+    moveGuideX.rotation.set(0,0,0);
+    moveGuideY.rotation.set(0,0,Math.PI / 2);
+    moveGuideZ.rotation.set(0,-Math.PI / 2,0);
+  }
+}
+
+function updateRotateHandle(){
+  updateSelectionVisuals();
+}
+
+function updateLightFromOrbit(angleDeg = state.lightAngle, height = state.lightHeight, radius = state.lightRadius){
+  const { center, maxDim } = getVisibleSceneLightInfo();
+  const angle = ((Number(angleDeg) % 360) + 360) % 360;
+  const safeHeight = Number.isFinite(Number(height)) ? Number(height) : DEFAULT_LIGHT.height;
+  const safeRadius = Number.isFinite(Number(radius)) ? Number(radius) : DEFAULT_LIGHT.radius;
+  state.lightAngle = angle;
+  state.lightHeight = safeHeight;
+  state.lightRadius = safeRadius;
+  sceneLightTarget.position.copy(center);
+  const rad = THREE.MathUtils.degToRad(angle);
+  const orbitRadius = safeRadius * 1.04;
+  const frontBias = Math.max(maxDim * 0.12, 0.22) * Math.sign(Math.sin(rad) || 1);
+  dirLight.position.set(
+    center.x + Math.cos(rad) * orbitRadius,
+    center.y + safeHeight,
+    center.z + Math.sin(rad) * orbitRadius + frontBias
+  );
+  const rimRadius = safeRadius * 0.82;
+  rimLight.position.set(
+    center.x - Math.cos(rad) * rimRadius,
+    center.y + Math.max(safeHeight * 0.24, 0.45),
+    center.z - Math.sin(rad) * rimRadius
+  );
+  updatePointLightPosition();
+}
+
+updateLightFromOrbit(state.lightAngle, state.lightHeight, state.lightRadius);
+
+function getViewSnapshot(){
+  return {
+    projection: state.projection,
+    perspectivePos: perspectiveCam.position.clone(),
+    orthoPos: orthoCam.position.clone(),
+    target: controls.target.clone(),
+    ortho: { left: orthoCam.left, right: orthoCam.right, top: orthoCam.top, bottom: orthoCam.bottom },
+    perspectiveUp: perspectiveCam.up.clone(),
+    orthoUp: orthoCam.up.clone(),
+    sceneRollDeg: state.sceneRollDeg || 0
+  };
+}
+
+function restoreViewSnapshot(snapshot){
+  if (!snapshot) return;
+  const toVec3 = (value, fallback) => new THREE.Vector3(
+    Number.isFinite(Number(value?.x)) ? Number(value.x) : fallback.x,
+    Number.isFinite(Number(value?.y)) ? Number(value.y) : fallback.y,
+    Number.isFinite(Number(value?.z)) ? Number(value.z) : fallback.z
+  );
+  const target = toVec3(snapshot.target, controls.target.clone());
+  const nextProjection = snapshot.projection === 'orthographic' ? 'orthographic' : 'perspective';
+  controls.dispose();
+  state.projection = nextProjection;
+  camera = nextProjection === 'orthographic' ? orthoCam : perspectiveCam;
+  perspectiveCam.position.copy(toVec3(snapshot.perspectivePos, perspectiveCam.position.clone()));
+  orthoCam.position.copy(toVec3(snapshot.orthoPos, orthoCam.position.clone()));
+  perspectiveCam.up.copy(toVec3(snapshot.perspectiveUp, new THREE.Vector3(0,1,0)));
+  orthoCam.up.copy(toVec3(snapshot.orthoUp, new THREE.Vector3(0,1,0)));
+  orthoCam.left = snapshot.ortho?.left ?? orthoCam.left;
+  orthoCam.right = snapshot.ortho?.right ?? orthoCam.right;
+  orthoCam.top = snapshot.ortho?.top ?? orthoCam.top;
+  orthoCam.bottom = snapshot.ortho?.bottom ?? orthoCam.bottom;
+  controls = new OrbitControls(camera, renderer.domElement);
+  applyControls();
+  controls.target.copy(target);
+  state.sceneRollDeg = Number(snapshot.sceneRollDeg || 0);
+  qs('#projLabel').textContent = state.projection === 'perspective' ? '원근' : '정투시';
+  qs('#projBtn').classList.toggle('active', state.projection === 'orthographic');
+  perspectiveCam.updateProjectionMatrix();
+  orthoCam.updateProjectionMatrix();
+  camera.updateProjectionMatrix();
+  controls.update();
+  syncControlMode();
+}
+
+function get2DPositionRows(){
+  return [...new Set(qsa('[data-kind="position"][data-axis="z"]').map(el => el.closest('.ctrl')).filter(Boolean))];
+}
+
+function sync2DHudButtons(){
+  qs('#layoutMoveBtn')?.classList.toggle('active', state.viewMode === '2d' && state.dragMode === 'screen');
+  qs('#layoutRotateBtn')?.classList.toggle('active', state.viewMode === '2d' && state.dragMode === 'rotate');
+  qs('#layoutOffBtn')?.classList.toggle('active', state.viewMode === '2d' && state.dragMode === 'off');
+}
+
+function update2DLayoutHudPlacement(){
+  const hud = qs('#layoutHud');
+  const main = qs('#layoutHudMain');
+  const view = qs('#layoutHudView');
+  if (!hud || !main || !view) return;
+  hud.style.left = '';
+  hud.style.right = '';
+  hud.style.top = '';
+  hud.style.bottom = '';
+  hud.style.transform = '';
+  [main, view].forEach(el => {
+    el.style.left = '';
+    el.style.right = '';
+    el.style.top = '';
+    el.style.bottom = '';
+  });
+  if (state.viewMode === '2d') {
+    hud.style.left = '50%';
+    hud.style.bottom = 'max(12px, env(safe-area-inset-bottom))';
+    hud.style.transform = 'translateX(-50%)';
+  }
+}
+
+function applyModeUi(){
+  document.body.classList.toggle('mode-2d', state.viewMode === '2d');
+  qs('#modeToggleBtn').classList.add('active');
+  qs('#modeToggleBtn').dataset.mode = state.viewMode;
+  qs('#modeToggleBtn').setAttribute('aria-pressed', 'true');
+  qs('#modeToggleLabel').textContent = state.viewMode === '2d' ? '2D' : '3D';
+  const groundBtn = qs('#dragGround');
+  if (groundBtn) groundBtn.style.display = state.viewMode === '2d' ? 'none' : '';
+  for (const row of get2DPositionRows()) row.style.display = state.viewMode === '2d' ? 'none' : '';
+  sync2DHudButtons();
+  update2DLayoutHudPlacement();
+}
+
+function showModeToast(mode){
+  const root = qs('#modeToast');
+  const textEl = qs('#modeToastText');
+  if (!root || !textEl) return;
+  textEl.textContent = MODE_TOAST_LABELS[mode] || '';
+  root.classList.add('show');
+  clearTimeout(state.modeToastTimer);
+  state.modeToastTimer = setTimeout(() => root.classList.remove('show'), 1000);
+}
+
+function apply2DLightPreset(){
+  const { center, maxDim } = getVisibleSceneLightInfo();
+  const forward = camera.getWorldDirection(new THREE.Vector3()).normalize();
+  const up = camera.up.clone().normalize();
+  const right = new THREE.Vector3().crossVectors(forward, up).normalize();
+  const dist = Math.max(maxDim * 2.2, 4.6);
+  sceneLightTarget.position.copy(center);
+  dirLight.position.copy(center)
+    .add(forward.clone().multiplyScalar(-dist))
+    .add(right.clone().multiplyScalar(-Math.max(maxDim * 0.9, 0.8)))
+    .add(up.clone().multiplyScalar(Math.max(maxDim * 0.95, 0.8)));
+  rimLight.position.copy(center)
+    .add(forward.clone().multiplyScalar(-dist * 0.62))
+    .add(right.clone().multiplyScalar(Math.max(maxDim * 0.36, 0.32)))
+    .add(up.clone().multiplyScalar(Math.max(maxDim * 0.22, 0.24)));
+  updatePointLightPosition();
+  renderer.shadowMap.needsUpdate = true;
+}
+
+function sync2DViewFromCurrentCamera({ preserveRoll=true, refreshLight=true } = {}){
+  const pos = perspectiveCam.position.clone();
+  const target = controls.target.clone();
+  state.layout2d = {
+    target,
+    distanceVec: pos.clone().sub(target),
+    rollDeg: preserveRoll ? Number(state.sceneRollDeg || 0) : 0
+  };
+  apply2DViewCamera({ refreshLight });
+}
+
+function apply2DViewCamera({ refreshLight=true } = {}){
+  if (!state.layout2d) return;
+  const target = state.layout2d.target.clone();
+  const distanceVec = state.layout2d.distanceVec.clone();
+  const pos = target.clone().add(distanceVec);
+  state.sceneRollDeg = Number(state.layout2d.rollDeg || 0);
+  perspectiveCam.position.copy(pos);
+  const forward = target.clone().sub(pos).normalize();
+  const rolledUp = new THREE.Vector3(0,1,0).applyAxisAngle(forward, THREE.MathUtils.degToRad(state.sceneRollDeg));
+  perspectiveCam.up.copy(rolledUp);
+  perspectiveCam.lookAt(target);
+  perspectiveCam.updateProjectionMatrix();
+  controls.target.copy(target);
+  controls.update();
+  updateSelectionVisuals();
+  if (refreshLight) apply2DLightPreset();
+}
+
+function rotate2DView(deltaDeg){
+  if (state.viewMode !== '2d') return;
+  if (!state.layout2d) sync2DViewFromCurrentCamera({ preserveRoll:true, refreshLight:false });
+  state.layout2d.rollDeg = Number(state.layout2d.rollDeg || 0) + deltaDeg;
+  apply2DViewCamera({ refreshLight:true });
+}
+
+function moveSelectedDepth(direction){
+  const model = getModel();
+  if (!model) return toast('먼저 소재를 선택하세요');
+  const { maxDim } = getVisibleSceneLightInfo();
+  const step = Math.max(maxDim * 0.12, 0.22);
+  const forward = camera.getWorldDirection(new THREE.Vector3()).normalize();
+  const signed = direction === 'front' ? -1 : 1;
+  model.transform.position.x += forward.x * step * signed;
+  model.transform.position.y += forward.y * step * signed;
+  model.transform.position.z += forward.z * step * signed;
+  applyTransform(model);
+  updateTransformUI();
+  updateSelectionVisuals();
+  renderer.shadowMap.needsUpdate = true;
+}
+
+function setViewMode(mode, { showBanner=true } = {}){
+  const desired = mode === '2d' ? '2d' : '3d';
+  if (desired === state.viewMode) return;
+  if (desired === '2d') {
+    state.return3dView = getViewSnapshot();
+    if (state.projection !== 'perspective') {
+      setProjectionMode('perspective', { showToast:false });
+    }
+    state.viewMode = '2d';
+    state.boxOnly = false;
+    if (state.dragMode === 'ground') state.dragMode = 'screen';
+    sync2DViewFromCurrentCamera({ preserveRoll:false, refreshLight:true });
+    if (getModel()) setDragMode('screen');
+    else setDragMode('off');
+  } else {
+    state.viewMode = '3d';
+    state.layout2d = null;
+    state.sceneRollDeg = 0;
+    if (state.return3dView) restoreViewSnapshot(state.return3dView);
+    perspectiveCam.up.set(0,1,0);
+    orthoCam.up.set(0,1,0);
+    updateLightFromOrbit(state.lightAngle, state.lightHeight, state.lightRadius);
+    renderer.shadowMap.needsUpdate = true;
+    updateSelectionVisuals();
+    syncControlMode();
+  }
+  applyModeUi();
+  scheduleStableViewportResize({ attempts:20, stableFrames:2 });
+  if (showBanner) showModeToast(desired);
+}
+
+function setProjectionMode(projection, { showToast=true } = {}){
+  let desired = projection === 'orthographic' ? 'orthographic' : 'perspective';
+  if (state.viewMode === '2d') desired = 'perspective';
+  const target = controls.target.clone();
+  const oldPos = camera.position.clone();
+  const oldUp = camera.up.clone();
+  controls.dispose();
+  state.projection = desired;
+  camera = desired === 'orthographic' ? orthoCam : perspectiveCam;
+  qs('#projLabel').textContent = desired === 'perspective' ? '원근' : '정투시';
+  qs('#projBtn').classList.toggle('active', desired === 'orthographic');
+  camera.position.copy(oldPos);
+  camera.up.copy(oldUp);
+  controls = new OrbitControls(camera, renderer.domElement);
+  applyControls();
+  controls.target.copy(target);
+  controls.update();
+  syncControlMode();
+  if (showToast) toast(desired === 'perspective' ? '원근 모드' : '정투시 모드');
+}
+
+const raycaster = new THREE.Raycaster();
+raycaster.params.Line.threshold = 0.18;
+const pointer = new THREE.Vector2();
+const dragPlane = new THREE.Plane();
+const hitPoint = new THREE.Vector3();
+const dragOffset = new THREE.Vector3();
+const activePointers = new Set();
+const pointerPositions = new Map();
+let pointerDownInfo = { x:0, y:0, t:0 };
+
+let viewportStabilizeTicket = 0;
+let viewportSwitchTimer = 0;
+let viewportSwitchArmedUntil = 0;
+function armViewportSwitch(ms=1400){
+  viewportSwitchArmedUntil = Math.max(viewportSwitchArmedUntil, Date.now() + ms);
+  document.body.classList.add('viewport-switching');
+  clearTimeout(viewportSwitchTimer);
+  viewportSwitchTimer = setTimeout(() => {
+    if (Date.now() >= viewportSwitchArmedUntil) document.body.classList.remove('viewport-switching');
+  }, ms + 180);
+}
+function finishViewportSwitch(ticket, { delay=110 } = {}){
+  if (ticket !== viewportStabilizeTicket) return;
+  clearTimeout(viewportSwitchTimer);
+  const shouldWait = document.body.classList.contains('viewport-switching') || Date.now() < viewportSwitchArmedUntil;
+  viewportSwitchTimer = setTimeout(() => {
+    if (ticket !== viewportStabilizeTicket) return;
+    document.body.classList.remove('viewport-switching');
+  }, shouldWait ? delay : 0);
+}
+function resizeNow(){
+  const w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
+  if (!w || !h) return false;
+  renderer.setSize(w,h,false);
+  perspectiveCam.aspect = w / h;
+  perspectiveCam.updateProjectionMatrix();
+  const s = 5, a = w/h;
+  orthoCam.left = -s*a; orthoCam.right = s*a; orthoCam.top = s; orthoCam.bottom = -s;
+  orthoCam.updateProjectionMatrix();
+  update2DLayoutHudPlacement();
+  return true;
+}
+function scheduleStableViewportResize({ attempts=18, stableFrames=2 } = {}){
+  const ticket = ++viewportStabilizeTicket;
+  let remaining = attempts;
+  let lastW = -1;
+  let lastH = -1;
+  let stableCount = 0;
+  const step = () => {
+    if (ticket !== viewportStabilizeTicket) return;
+    const w = Math.round(canvasWrap.clientWidth || 0);
+    const h = Math.round(canvasWrap.clientHeight || 0);
+    if (w > 0 && h > 0 && w == lastW && h == lastH) stableCount += 1;
+    else stableCount = 0;
+    lastW = w;
+    lastH = h;
+    resizeNow();
+    if (stableCount >= stableFrames || remaining <= 0) {
+      if (state.viewMode === '2d' && state.layout2d) apply2DViewCamera({ refreshLight:false });
+      update2DLayoutHudPlacement();
+      finishViewportSwitch(ticket);
+      return;
+    }
+    remaining -= 1;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function resize(){
+  scheduleStableViewportResize();
+}
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => { armViewportSwitch(1500); scheduleStableViewportResize({ attempts:24, stableFrames:3 }); });
+window.addEventListener('pageshow', () => scheduleStableViewportResize({ attempts:18, stableFrames:2 }));
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) scheduleStableViewportResize({ attempts:18, stableFrames:2 });
+});
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', () => scheduleStableViewportResize({ attempts:20, stableFrames:2 }));
+}
+scheduleStableViewportResize({ attempts:18, stableFrames:2 });
+
+function toast(msg){
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; qs('#toasts').appendChild(el);
+  setTimeout(()=>{ el.style.opacity = '0'; el.style.transform = 'translateY(-8px)'; el.style.transition = '.2s'; setTimeout(()=>el.remove(),220); }, 1800);
+}
+function renderLoadingTitle(){
+  const titleEl = qs('#loadingTitle');
+  if (!titleEl) return;
+  if (state.loadingTitle === BRAND_LOADING_TITLE) {
+    titleEl.classList.add('brandTitle');
+    titleEl.innerHTML = '<span class="loadingBrandIntro">미대입시 전문 교육</span><span class="loadingBrandName">비투비미술학원</span>';
+    return;
+  }
+  titleEl.classList.remove('brandTitle');
+  titleEl.textContent = state.loadingTitle;
+}
+function updateLoadingOverlay(){
+  const overlay = qs('#loading');
+  if (!overlay) return;
+  overlay.classList.toggle('show', state.loadingCounter > 0 || state.uiLocked);
+  document.body.classList.toggle('busy', !!state.uiLocked);
+  const detailEl = qs('#loadingDetail');
+  if (detailEl) detailEl.style.display = state.loadingDetail ? 'block' : 'none';
+}
+function setLoadingStatus(title='소재 로딩 중...', detail=''){
+  state.loadingTitle = title || '소재 로딩 중...';
+  state.loadingDetail = detail || '';
+  const detailEl = qs('#loadingDetail');
+  renderLoadingTitle();
+  if (detailEl) detailEl.textContent = state.loadingDetail;
+  updateLoadingOverlay();
+}
+function showLoading(v, title='', detail=''){
+  if (title || detail) setLoadingStatus(title || state.loadingTitle, detail || state.loadingDetail);
+  state.loadingCounter = Math.max(0, state.loadingCounter + (v ? 1 : -1));
+  updateLoadingOverlay();
+}
+function beginUiLock(title='처리 중...', detail=''){
+  state.uiLocked = true;
+  setLoadingStatus(title, detail);
+  updateLoadingOverlay();
+}
+function endUiLock(){
+  state.uiLocked = false;
+  if (state.loadingCounter <= 0) {
+    state.loadingTitle = '소재 로딩 중...';
+    state.loadingDetail = '';
+  }
+  updateLoadingOverlay();
+}
+async function withSceneLoadLock(task, { title='장면 불러오는 중...', detail='준비 중...' } = {}){
+  const prevSuspendReflections = state.suspendReflections;
+  const prevShadowAutoUpdate = renderer.shadowMap.autoUpdate;
+  const prevDeferTextureStats = state.deferTextureStats;
+  beginUiLock(title, detail);
+  state.suspendReflections = true;
+  state.deferTextureStats = true;
+  renderer.shadowMap.autoUpdate = false;
+  controls.enabled = false;
+  try {
+    return await task();
+  } finally {
+    state.suspendReflections = prevSuspendReflections;
+    state.deferTextureStats = prevDeferTextureStats;
+    renderer.shadowMap.autoUpdate = prevShadowAutoUpdate;
+    renderer.shadowMap.needsUpdate = true;
+    controls.enabled = true;
+    state.reflectionTick = 0;
+    endUiLock();
+    syncControlMode();
+  }
+}
+function setLoadStep(current, total, label='소재 추가 중', title=state.loadingTitle || '장면 불러오는 중...'){
+  if (!total) setLoadingStatus(title, label);
+  else setLoadingStatus(title, `${Math.min(current, total)}/${total} ${label}`);
+}
+function getExt(name){ const m = name.toLowerCase().match(/\.([^.]+)$/); return m ? m[1] : ''; }
+function fmt(n){ return String(Math.round(n*100)/100); }
+function setEmpty(){ qs('#empty').classList.toggle('hidden', state.models.length > 0); qs('#modelCount').textContent = state.models.length; }
+
+function normalizeRawObject(raw){
+  const box = new THREE.Box3().setFromObject(raw);
+  if (box.isEmpty()) return;
+  const size = new THREE.Vector3(); box.getSize(size);
+  const maxDim = Math.max(size.x,size.y,size.z) || 1;
+  const scale = 2 / maxDim;
+  raw.scale.multiplyScalar(scale);
+  const box2 = new THREE.Box3().setFromObject(raw);
+  const center = new THREE.Vector3(); box2.getCenter(center);
+  raw.position.x -= center.x;
+  raw.position.z -= center.z;
+  raw.position.y -= box2.min.y;
+}
+function tuneTexture(tex, isColor = false){
+  if (!tex) return tex;
+  tex.anisotropy = maxTextureAnisotropy;
+  if (isColor && 'colorSpace' in tex) tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+function ensurePhysicalMaterialDefaults(m){
+  if (!m) return m;
+  if (!m.normalScale) m.normalScale = new THREE.Vector2(1, 1);
+  if (m.clearcoatNormalMap && !m.clearcoatNormalScale) m.clearcoatNormalScale = new THREE.Vector2(1, 1);
+  if (m.iridescenceThicknessRange == null) m.iridescenceThicknessRange = [100, 400];
+  if (m.specularColor == null) m.specularColor = new THREE.Color(0xffffff);
+  if (m.attenuationColor == null) m.attenuationColor = new THREE.Color(0xffffff);
+  return m;
+}
+function hasMissingOriginalMaterialInfo(source){
+  return !source || !!source?.userData?.fromMissingSourceMaterial;
+}
+
+function clamp01Value(value, fallback = 0){
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return THREE.MathUtils.clamp(num, 0, 1);
+}
+
+function getTextureImageSource(texture){
+  const source = texture?.source?.data || texture?.image || null;
+  if (!source) return null;
+  if (source?.data && Number.isFinite(source.width) && Number.isFinite(source.height)) {
+    return { width: source.width, height: source.height, data: source.data };
+  }
+  const width = source.videoWidth || source.naturalWidth || source.width || 0;
+  const height = source.videoHeight || source.naturalHeight || source.height || 0;
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null;
+  return { width, height, image: source };
+}
+
+function getTextureChannelStats(texture){
+  if (!texture) return null;
+  texture.userData = texture.userData || {};
+  if (texture.userData.__channelStats) return texture.userData.__channelStats;
+  if (state.deferTextureStats) return null;
+  const src = getTextureImageSource(texture);
+  if (!src) return null;
+  try {
+    let data = src.data || null;
+    let width = src.width;
+    let height = src.height;
+    if (!data) {
+      const maxSize = 64;
+      const scale = Math.min(1, maxSize / Math.max(width, height));
+      const sampleW = Math.max(1, Math.round(width * scale));
+      const sampleH = Math.max(1, Math.round(height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = sampleW;
+      canvas.height = sampleH;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+      ctx.drawImage(src.image, 0, 0, sampleW, sampleH);
+      data = ctx.getImageData(0, 0, sampleW, sampleH).data;
+      width = sampleW;
+      height = sampleH;
+    }
+    let r = 0, g = 0, b = 0, a = 0;
+    let rMax = 0, gMax = 0, bMax = 0, aMax = 0;
+    const count = Math.max(1, Math.floor(data.length / 4));
+    for (let i = 0; i < data.length; i += 4) {
+      const rv = data[i] ?? 0;
+      const gv = data[i + 1] ?? 0;
+      const bv = data[i + 2] ?? 0;
+      const av = data[i + 3] ?? 255;
+      r += rv; g += gv; b += bv; a += av;
+      if (rv > rMax) rMax = rv;
+      if (gv > gMax) gMax = gv;
+      if (bv > bMax) bMax = bv;
+      if (av > aMax) aMax = av;
+    }
+    const stats = {
+      width,
+      height,
+      sampleCount: count,
+      rAvg: r / count,
+      gAvg: g / count,
+      bAvg: b / count,
+      aAvg: a / count,
+      rMax,
+      gMax,
+      bMax,
+      aMax
+    };
+    texture.userData.__channelStats = stats;
+    return stats;
+  } catch (error) {
+    console.warn('Texture channel sampling skipped:', error);
+    return null;
+  }
+}
+
+function hasGlassEvidence(source){
+  if (!source) return false;
+  const transparent = !!source.transparent || (source.opacity ?? 1) < 0.985;
+  const transmission = (source.transmission ?? 0) > 0.05;
+  const refraction = (source.ior ?? 1) > 1.01 && ((source.thickness ?? 0) > 0.01 || transmission);
+  const alphaDriven = !!source.alphaMap && transparent;
+  return transparent || transmission || refraction || alphaDriven;
+}
+
+function hasStrongMetalEvidence(source, meshName=''){
+  if (!source) return false;
+  const tag = `${source?.name || ''} ${meshName || ''}`.toLowerCase();
+  const metalKeyword = /metal|steel|chrome|iron|silver|gold|alum|aluminum|brass|copper|metallic|stainless|금속/.test(tag);
+  const glossyMetalFactors = (source.metalness ?? 0) > 0.85 && (source.roughness ?? 1) < 0.45;
+  return metalKeyword || glossyMetalFactors;
+}
+
+function getOriginalMaterialResponseProfile(source){
+  const roughnessScalar = clamp01Value(source?.roughness, 1.0);
+  const metalnessScalar = clamp01Value(source?.metalness, 0.0);
+  const transmission = clamp01Value(source?.transmission, 0.0);
+  const opacity = clamp01Value(source?.opacity, 1.0);
+  const clearcoat = clamp01Value(source?.clearcoat, 0.0);
+  const clearcoatRoughness = clamp01Value(source?.clearcoatRoughness, roughnessScalar);
+  const specularIntensity = clamp01Value(source?.specularIntensity, 1.0);
+  const ormStats = getTextureChannelStats(source?.metalnessMap || source?.roughnessMap || null);
+  const hasOrmSignal = !!ormStats;
+  const hasTextureDrivenSurface = !!(source?.metalnessMap || source?.roughnessMap || source?.normalMap || source?.aoMap || source?.map);
+  const roughnessTexAvg = hasOrmSignal ? clamp01Value((ormStats.gAvg ?? 255) / 255, 1.0) : 1.0;
+  const metalnessTexAvg = hasOrmSignal ? clamp01Value((ormStats.bAvg ?? 255) / 255, 1.0) : 1.0;
+  const roughnessTexMax = hasOrmSignal ? clamp01Value((ormStats.gMax ?? 255) / 255, 1.0) : roughnessTexAvg;
+  const metalnessTexMax = hasOrmSignal ? clamp01Value((ormStats.bMax ?? 255) / 255, 1.0) : metalnessTexAvg;
+  const roughness = clamp01Value(roughnessScalar * roughnessTexAvg, roughnessScalar);
+  const metalness = clamp01Value(metalnessScalar * metalnessTexAvg, metalnessScalar);
+  const glossy = 1.0 - roughness;
+  const transparency = Math.max(transmission, 1.0 - opacity);
+  const metalReflection = metalness * glossy;
+  const coatReflection = clearcoat * (1.0 - clearcoatRoughness) * 0.7;
+  const dielectricReflection = glossy * Math.max(specularIntensity, 0.25) * (1.0 - Math.min(metalness, 0.6)) * 0.16;
+  const glassReflection = transparency * Math.max(glossy, 0.18) * 0.95;
+  const peakMetalReflection = metalnessScalar * metalnessTexMax * Math.max(0.0, 1.0 - (roughnessScalar * roughnessTexMax));
+  const reflectionScore = THREE.MathUtils.clamp(Math.max(metalReflection, coatReflection, dielectricReflection, glassReflection, peakMetalReflection * 0.42), 0, 1);
+  const weakEnvFloor = hasTextureDrivenSurface
+    ? THREE.MathUtils.lerp(0.035, hasGlassEvidence(source) ? 0.22 : 0.18, THREE.MathUtils.clamp(glossy * (0.55 + metalness * 0.45), 0, 1))
+    : 0.0;
+  const computedEnvIntensity = THREE.MathUtils.lerp(0.06, hasGlassEvidence(source) ? 1.05 : 1.45, Math.pow(reflectionScore, 0.82));
+  const envMapIntensity = Number.isFinite(Number(source?.envMapIntensity))
+    ? Math.max(Number(source.envMapIntensity), weakEnvFloor)
+    : Math.max(computedEnvIntensity, weakEnvFloor);
+  const dynamicReflectionStrength = Math.max(reflectionScore, peakMetalReflection * 0.55) * (hasGlassEvidence(source) ? 0.9 : 1.0);
+  return {
+    roughness,
+    metalness,
+    roughnessScalar,
+    metalnessScalar,
+    transmission,
+    opacity,
+    clearcoat,
+    clearcoatRoughness,
+    specularIntensity,
+    glossy,
+    transparency,
+    hasOrmSignal,
+    hasTextureDrivenSurface,
+    roughnessTexAvg,
+    metalnessTexAvg,
+    roughnessTexMax,
+    metalnessTexMax,
+    reflectionScore,
+    weakEnvFloor,
+    envMapIntensity,
+    dynamicReflectionStrength,
+    shouldUseEnvironment: transparency > 0.02 || reflectionScore > 0.01 || weakEnvFloor > 0.045,
+    shouldUseDynamicCapture: transparency > 0.28 || dynamicReflectionStrength > 0.12 || (metalness > 0.42 && glossy > 0.28)
+  };
+}
+
+function detectMaterialKind(source, meshName=''){
+  const forced = source?.userData?.forcedSurfaceKind;
+  if (forced === 'glass' || forced === 'metal' || forced === 'default') return forced;
+  if (hasMissingOriginalMaterialInfo(source)) return 'default';
+  const hinted = source?.userData?.originalDetectedKind;
+  if (hinted === 'glass' || hinted === 'metal' || hinted === 'default') return hinted;
+  const profile = getOriginalMaterialResponseProfile(source);
+  if (hasGlassEvidence(source)) return 'glass';
+  if (hasStrongMetalEvidence(source, meshName) || profile.metalness >= 0.6 || profile.reflectionScore >= 0.48) return 'metal';
+  return 'default';
+}
+
+function sanitizeMaterialMode(mode){
+  return ['original','default','metal','glass'].includes(mode) ? mode : 'original';
+}
+
+function getMaterialUiLabel(mode){
+  return mode === 'original' ? '원본' : mode === 'metal' ? '금속' : mode === 'glass' ? '유리' : '일반';
+}
+
+function getModelDefaultMaterialMode(model){
+  return sanitizeMaterialMode(model?.defaultMaterialMode || model?.materialMode || 'original');
+}
+
+function inferInitialMaterialMode(source, meshName=''){
+  const kind = detectMaterialKind(source, meshName);
+  return kind === 'glass' ? 'glass' : kind === 'metal' ? 'metal' : 'default';
+}
+
+function getKindsSummaryFromOriginalMaterials(materials){
+  const arr = Array.isArray(materials) ? materials : [materials];
+  const kinds = [];
+  arr.forEach(mat => {
+    const kind = detectMaterialKind(mat, '');
+    if (!kinds.includes(kind)) kinds.push(kind);
+  });
+  return kinds;
+}
+
+function summarizeOriginalKindsOnModel(model){
+  const summary = [];
+  if (!model?.object) return summary;
+  model.object.traverse(obj => {
+    if (!obj.isMesh) return;
+    const originals = obj.userData.originalMaterials || obj.material;
+    getKindsSummaryFromOriginalMaterials(originals).forEach(kind => {
+      if (!summary.includes(kind)) summary.push(kind);
+    });
+  });
+  return summary;
+}
+
+function inferModelModeFromOriginalKinds(kinds){
+  const uniq = [...new Set(kinds.filter(Boolean))];
+  if (uniq.includes('glass')) return 'glass';
+  if (uniq.includes('metal')) return 'metal';
+  return 'default';
+}
+
+function getKindsSummaryLabel(kinds){
+  const labels = kinds.map(kind => getMaterialUiLabel(kind));
+  return labels.length ? labels.join(' + ') : '일반';
+}
+
+function defaultMaterialSettings(){
+  return {
+    metalReflectivity: 1.15,
+    glassTransmission: 0.9,
+    glassOpacity: 0.92
+  };
+}
+
+function normalizeMaterialSettings(settings){
+  return {
+    metalReflectivity: THREE.MathUtils.clamp(Number(settings?.metalReflectivity) || 1.15, 0, 2),
+    glassTransmission: THREE.MathUtils.clamp(Number(settings?.glassTransmission) || 0.9, 0, 1),
+    glassOpacity: THREE.MathUtils.clamp(Number(settings?.glassOpacity) || 0.92, 0.15, 1)
+  };
+}
+
+function getMaterialSettingsFromTarget(target){
+  return normalizeMaterialSettings(target?.userData?.materialSettings || target?.materialSettings || target || defaultMaterialSettings());
+}
+
+function applyMaterialSettingsToModel(model){
+  if (!model?.object) return;
+  model.materialSettings = normalizeMaterialSettings(model.materialSettings || defaultMaterialSettings());
+  model.object.traverse(obj => {
+    if (!obj.isMesh || !obj.material) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach(mat => { if (mat) mat.userData.materialSettings = model.materialSettings; });
+  });
+}
+
+function refreshSelectedMaterialSliders(){ return; }
+
+function applyGlassRenderPriority(mat, mesh){
+  if (!mat || !mesh) return;
+  mat.transparent = true;
+  mat.depthWrite = false;
+  mesh.renderOrder = 1;
+  if (mat.side == null) mat.side = THREE.FrontSide;
+}
+
+function isNativeTransmissionGlass(mat){
+  if (!mat) return false;
+  const base = mat.userData?.__baseSurface || mat;
+  return (base.transmission ?? 0) > 0.2 || ((base.ior ?? 1) > 1.01 && ((base.thickness ?? 0) > 0.01));
+}
+
+function clearGlassEdgeShader(mat){
+  if (!mat) return;
+  mat.userData = mat.userData || {};
+  if (!mat.userData.__glassEdgeShader) return;
+  delete mat.userData.__glassEdgeShader;
+  mat.onBeforeCompile = () => {};
+  mat.customProgramCacheKey = () => 'base-material';
+  mat.needsUpdate = true;
+}
+
+function applyGlassEdgeShader(mat){
+  if (!mat || !mat.isMeshPhysicalMaterial) return;
+  mat.userData = mat.userData || {};
+  if (mat.userData.__glassEdgeShader) return;
+  mat.userData.__glassEdgeShader = true;
+  const thicknessHint = THREE.MathUtils.clamp(mat.thickness ?? 0.45, 0.12, 1.2);
+  mat.customProgramCacheKey = () => `glass-edge-v54-${thicknessHint.toFixed(2)}`;
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.gsparkEdgeBoost = { value: 2.2 };
+    shader.uniforms.gsparkEdgeAmbient = { value: 0.055 };
+    shader.uniforms.gsparkCenterSpec = { value: 0.10 };
+    shader.uniforms.gsparkEdgeAlpha = { value: 0.012 };
+    shader.uniforms.gsparkDarkEdge = { value: 0.16 };
+    shader.uniforms.gsparkStripeGain = { value: 1.35 };
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <common>',
+      `#include <common>\nuniform float gsparkEdgeBoost;\nuniform float gsparkEdgeAmbient;\nuniform float gsparkCenterSpec;\nuniform float gsparkEdgeAlpha;\nuniform float gsparkDarkEdge;\nuniform float gsparkStripeGain;\nconst float gsparkThicknessHint = ${thicknessHint.toFixed(3)};\n`
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;',
+      'vec3 gsparkN = normalize(normal);\nvec3 gsparkV = normalize(vViewPosition);\nfloat gsparkViewDot = clamp(abs(dot(gsparkN, gsparkV)), 0.0, 1.0);\nfloat gsparkEdge = pow(1.0 - gsparkViewDot, 2.25);\nvec3 gsparkR = reflect(gsparkV, gsparkN);\nfloat gsparkStripeA = pow(max(dot(gsparkR, normalize(vec3(0.62, 0.18, 0.76))), 0.0), 26.0);\nfloat gsparkStripeB = pow(max(dot(gsparkR, normalize(vec3(-0.52, 0.26, 0.81))), 0.0), 17.0);\nfloat gsparkStripe = max(gsparkStripeA, gsparkStripeB * 0.78) * gsparkStripeGain;\nfloat gsparkThicknessMix = clamp(gsparkThicknessHint * 0.9, 0.0, 1.0);\nfloat gsparkShape = clamp(gsparkEdge * (1.0 + gsparkThicknessMix * 0.85) + gsparkStripe * (0.42 + gsparkThicknessMix * 0.75), 0.0, 1.85);\nvec3 gsparkSpecular = totalSpecular * (gsparkCenterSpec + gsparkShape * gsparkEdgeBoost);\nvec3 gsparkTint = vec3(gsparkEdge * gsparkEdgeAmbient + gsparkStripe * 0.045 * (0.55 + gsparkThicknessMix));\nfloat gsparkDark = 1.0 - gsparkDarkEdge * gsparkEdge * (0.55 + gsparkThicknessMix * 0.55);\nvec3 outgoingLight = (totalDiffuse + gsparkSpecular + totalEmissiveRadiance + gsparkTint) * gsparkDark;'
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <output_fragment>',
+      'diffuseColor.a = clamp(max(diffuseColor.a, 0.985) + pow(1.0 - clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0), 2.6) * gsparkEdgeAlpha, 0.0, 1.0);\n#include <output_fragment>'
+    );
+  };
+  mat.needsUpdate = true;
+}
+
+function applyMaterialGeometryHints(mat, mesh){
+  if (!mat || !mesh?.geometry) return mat;
+  const kind = mat.userData?.surfaceKind || mat.userData?.forcedSurfaceKind || '';
+  if (kind !== 'glass') return mat;
+  const geometry = mesh.geometry;
+  if (!geometry.boundingBox) geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  if (!box) return mat;
+  const size = box.getSize(new THREE.Vector3());
+  const dims = [size.x, size.y, size.z].filter(v => Number.isFinite(v) && v > 1e-4);
+  const maxDim = dims.length ? Math.max(...dims) : 1;
+  const minDim = dims.length ? Math.min(...dims) : maxDim;
+  const derivedThickness = THREE.MathUtils.clamp(Math.max(minDim * 0.6, maxDim * 0.18), 0.18, 2.4);
+  mat.thickness = Math.max(mat.thickness ?? 0, derivedThickness);
+  mat.attenuationDistance = Math.max(mat.attenuationDistance ?? 0, derivedThickness * 8.0);
+  mat.needsUpdate = true;
+  return mat;
+}
+
+function getVisibleSceneLightInfo(){
+  const visibleModels = state.models.filter(m => m.visible);
+  const box = new THREE.Box3();
+  let has = false;
+  visibleModels.forEach(m => {
+    const b = new THREE.Box3().setFromObject(m.object);
+    if (!b.isEmpty()) {
+      box.union(b);
+      has = true;
+    }
+  });
+  if (!has) {
+    return { center: new THREE.Vector3(0, 1, 0), maxDim: 4 };
+  }
+  const center = new THREE.Vector3();
+  const size = new THREE.Vector3();
+  box.getCenter(center);
+  box.getSize(size);
+  return { center, maxDim: Math.max(size.x, size.y, size.z, 1) };
+}
+
+function clearPlasterMaps(mat){
+  if (!mat) return;
+  ['map','metalnessMap','roughnessMap','normalMap','aoMap','alphaMap','emissiveMap','displacementMap','bumpMap','lightMap'].forEach(k => {
+    if (k in mat) mat[k] = null;
+  });
+}
+
+function getAxisColor(axis){
+  return axis === 'x' ? 0xff5a7a : axis === 'y' ? 0x55d66b : 0x4aa8ff;
+}
+
+function createPlasterGridTexture(){
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f4f4f2';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = 'rgba(145,145,145,0.55)';
+  ctx.lineWidth = 2;
+  const step = 64;
+  for (let x = 0; x <= canvas.width; x += step) {
+    ctx.beginPath();
+    ctx.moveTo(x + 0.5, 0);
+    ctx.lineTo(x + 0.5, canvas.height);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= canvas.height; y += step) {
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(canvas.width, y + 0.5);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1.2, 1.2);
+  tex.anisotropy = maxTextureAnisotropy;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+const plasterGridTexture = createPlasterGridTexture();
+function applyReflectiveMaterialProfile(mat){
+  const kind = mat?.userData?.surfaceKind || 'default';
+  if (!mat || !mat.isMeshPhysicalMaterial) return mat;
+  if (!mat.userData.__baseSurface) {
+    mat.userData.__baseSurface = {
+      roughness: mat.roughness,
+      metalness: mat.metalness,
+      clearcoat: mat.clearcoat,
+      clearcoatRoughness: mat.clearcoatRoughness,
+      transmission: mat.transmission,
+      thickness: mat.thickness,
+      ior: mat.ior,
+      envMapIntensity: mat.envMapIntensity,
+      opacity: mat.opacity,
+      transparent: mat.transparent,
+      side: mat.side,
+      depthWrite: mat.depthWrite,
+      color: mat.color?.clone?.() || new THREE.Color(0xffffff),
+      map: mat.map || null,
+      normalMap: mat.normalMap || null,
+      roughnessMap: mat.roughnessMap || null,
+      metalnessMap: mat.metalnessMap || null
+    };
+  }
+  const base = mat.userData.__baseSurface;
+  if (kind === 'metal') {
+    mat.color.copy(base.color || new THREE.Color(0xb8bcc7));
+    mat.map = base.map || null;
+    mat.normalMap = base.normalMap || null;
+    mat.roughnessMap = base.roughnessMap || null;
+    mat.metalnessMap = base.metalnessMap || null;
+    mat.metalness = Math.min(Math.max(base.metalness ?? 0.55, 0.94), 1.0);
+    mat.roughness = Math.min(base.roughness ?? 0.28, 0.2);
+    mat.clearcoat = Math.max(base.clearcoat ?? 0.05, 0.12);
+    mat.clearcoatRoughness = Math.min(base.clearcoatRoughness ?? 0.22, 0.18);
+    mat.envMapIntensity = Math.max(base.envMapIntensity ?? 0.9, 1.2);
+    mat.envMap = mat.userData?.reflectionTexture || envRenderTarget.texture;
+    mat.reflectivity = 0.72;
+    mat.transparent = false;
+    mat.opacity = 1;
+    mat.depthWrite = true;
+    if ('specularIntensity' in mat) mat.specularIntensity = Math.min(Math.max(mat.specularIntensity ?? 0.5, 0.55), 0.72);
+  } else if (kind === 'glass') {
+    const nativeGlass = isNativeTransmissionGlass(mat);
+    mat.color.copy(base.color || new THREE.Color(0xf8fbff));
+    mat.map = base.map || null;
+    mat.normalMap = base.normalMap || null;
+    mat.roughnessMap = base.roughnessMap || null;
+    mat.metalnessMap = base.metalnessMap || null;
+    mat.transparent = true;
+    mat.opacity = nativeGlass
+      ? Math.max(base.opacity ?? mat.opacity ?? 1, 0.998)
+      : Math.max(getMaterialSettingsFromTarget(mat).glassOpacity, 0.92);
+    mat.transmission = nativeGlass
+      ? THREE.MathUtils.clamp(Math.max(base.transmission ?? mat.transmission ?? 0.88, 0.88), 0.84, 0.92)
+      : THREE.MathUtils.clamp(Math.max(base.transmission ?? 0.2, 0.82), 0.80, 0.90);
+    mat.thickness = Math.max(base.thickness ?? mat.thickness ?? 0.28, nativeGlass ? 0.58 : 0.74);
+    mat.ior = Math.max(base.ior ?? 1.1, 1.45);
+    mat.roughness = nativeGlass
+      ? THREE.MathUtils.clamp(base.roughness ?? 0.14, 0.12, 0.19)
+      : THREE.MathUtils.clamp(base.roughness ?? 0.16, 0.14, 0.24);
+    mat.clearcoat = Math.max(base.clearcoat ?? 0.04, 0.12);
+    mat.clearcoatRoughness = THREE.MathUtils.clamp(base.clearcoatRoughness ?? 0.12, 0.08, 0.18);
+    mat.envMap = envRenderTarget.texture;
+    mat.envMapIntensity = nativeGlass
+      ? THREE.MathUtils.clamp(base.envMapIntensity ?? 0.18, 0.14, 0.26)
+      : THREE.MathUtils.clamp(base.envMapIntensity ?? 0.2, 0.16, 0.30);
+    mat.attenuationDistance = Math.max(base.attenuationDistance ?? 0, nativeGlass ? 0.95 : 2.2);
+    mat.attenuationColor = base.attenuationColor?.clone?.() || new THREE.Color(0xf4f8ff);
+    mat.side = THREE.FrontSide;
+    mat.reflectivity = Math.max(base.reflectivity ?? 0.18, 0.18);
+    mat.depthWrite = false;
+    if ('specularIntensity' in mat) mat.specularIntensity = Math.max(base.specularIntensity ?? 0.72, 0.72);
+    applyGlassEdgeShader(mat);
+  } else if (kind === 'plaster') {
+    clearGlassEdgeShader(mat);
+    clearPlasterMaps(mat);
+    mat.map = plasterGridTexture;
+    mat.color = new THREE.Color(0xffffff);
+    mat.transparent = false;
+    mat.opacity = 1;
+    mat.transmission = 0;
+    mat.metalness = 0.0;
+    mat.roughness = 0.98;
+    mat.clearcoat = 0.0;
+    mat.clearcoatRoughness = 0.3;
+    mat.envMapIntensity = 0.02;
+    mat.side = THREE.FrontSide;
+    mat.envMap = null;
+    mat.depthWrite = true;
+  } else {
+    clearGlassEdgeShader(mat);
+    mat.color.copy(base.color || new THREE.Color(0xb8bcc7));
+    mat.map = base.map || null;
+    mat.normalMap = base.normalMap || null;
+    mat.roughnessMap = base.roughnessMap || null;
+    mat.metalnessMap = base.metalnessMap || null;
+    mat.envMap = null;
+    mat.transparent = !!base.transparent;
+    mat.opacity = base.opacity ?? 1;
+    mat.transmission = base.transmission ?? 0;
+    mat.metalness = Math.min(base.metalness ?? mat.metalness ?? 0, 0.12);
+    mat.roughness = Math.max(base.roughness ?? mat.roughness ?? 0.78, 0.82);
+    mat.clearcoat = Math.min(base.clearcoat ?? mat.clearcoat ?? 0, 0.03);
+    mat.clearcoatRoughness = THREE.MathUtils.clamp(base.clearcoatRoughness ?? mat.clearcoatRoughness ?? 0.3, 0.22, 0.4);
+    mat.envMapIntensity = Math.min(base.envMapIntensity ?? mat.envMapIntensity ?? 0.03, 0.08);
+    mat.thickness = base.thickness ?? mat.thickness;
+    mat.ior = base.ior ?? mat.ior;
+    mat.depthWrite = base.depthWrite ?? true;
+    mat.side = base.side ?? mat.side;
+  }
+  mat.needsUpdate = true;
+  return mat;
+}
+function buildPhysicalMaterialFrom(source){
+  const material = new THREE.MeshPhysicalMaterial({
+    name: source.name || '',
+    color: source.color?.clone?.() || new THREE.Color(0xb8bcc7),
+    map: tuneTexture(source.map || null, true),
+    normalMap: tuneTexture(source.normalMap || null),
+    roughnessMap: tuneTexture(source.roughnessMap || null),
+    metalnessMap: tuneTexture(source.metalnessMap || null),
+    aoMap: tuneTexture(source.aoMap || null),
+    alphaMap: tuneTexture(source.alphaMap || null),
+    emissive: source.emissive?.clone?.() || new THREE.Color(0x000000),
+    emissiveMap: tuneTexture(source.emissiveMap || null, true),
+    emissiveIntensity: source.emissiveIntensity ?? 1,
+    transparent: !!source.transparent,
+    opacity: source.opacity ?? 1,
+    side: source.side ?? THREE.FrontSide,
+    roughness: source.roughness ?? 0.55,
+    metalness: source.metalness ?? 0.08,
+    flatShading: !!source.flatShading,
+    wireframe: !!source.wireframe,
+    envMapIntensity: source.envMapIntensity ?? 1.0,
+    normalScale: source.normalScale?.clone?.() || new THREE.Vector2(1, 1),
+    aoMapIntensity: source.aoMapIntensity ?? 1,
+    displacementMap: tuneTexture(source.displacementMap || null),
+    displacementScale: source.displacementScale ?? 1,
+    displacementBias: source.displacementBias ?? 0,
+    bumpMap: tuneTexture(source.bumpMap || null),
+    bumpScale: source.bumpScale ?? 1,
+    lightMap: tuneTexture(source.lightMap || null),
+    lightMapIntensity: source.lightMapIntensity ?? 1,
+    transmission: source.transmission ?? 0,
+    thickness: source.thickness ?? 0,
+    ior: source.ior ?? 1.45,
+    clearcoat: source.clearcoat ?? 0,
+    clearcoatRoughness: source.clearcoatRoughness ?? 0,
+    reflectivity: source.reflectivity ?? 0.5,
+    attenuationDistance: source.attenuationDistance ?? 0,
+    attenuationColor: source.attenuationColor?.clone?.() || new THREE.Color(0xffffff),
+    specularIntensity: source.specularIntensity ?? 1,
+    specularColor: source.specularColor?.clone?.() || new THREE.Color(0xffffff)
+  });
+  if (source.alphaTest != null) material.alphaTest = source.alphaTest;
+  if (source.depthWrite != null) material.depthWrite = source.depthWrite;
+  if (source.depthTest != null) material.depthTest = source.depthTest;
+  if (source.vertexColors) material.vertexColors = source.vertexColors;
+  if (source.transparent && source.opacity === 1) material.opacity = 0.999;
+  if (source.clearcoatNormalMap) material.clearcoatNormalMap = tuneTexture(source.clearcoatNormalMap || null);
+  if (source.clearcoatNormalScale) material.clearcoatNormalScale = source.clearcoatNormalScale.clone?.() || source.clearcoatNormalScale;
+  if (source.iridescence != null) material.iridescence = source.iridescence;
+  if (source.iridescenceIOR != null) material.iridescenceIOR = source.iridescenceIOR;
+  if (source.iridescenceThicknessRange != null) material.iridescenceThicknessRange = Array.isArray(source.iridescenceThicknessRange) ? [...source.iridescenceThicknessRange] : source.iridescenceThicknessRange;
+  if (source.sheen != null) material.sheen = source.sheen;
+  if (source.sheenRoughness != null) material.sheenRoughness = source.sheenRoughness;
+  if (source.sheenColor) material.sheenColor = source.sheenColor.clone?.() || source.sheenColor;
+  return material;
+}
+function cloneSourceMaterial(mat){
+  if (!mat) return createFallbackMaterial(null, '');
+  try {
+    return mat.clone ? mat.clone() : buildPhysicalMaterialFrom(mat);
+  } catch (e) {
+    return buildPhysicalMaterialFrom(mat);
+  }
+}
+
+function prepareNativeMaterial(mat, meshName=''){
+  if (!mat) return createFallbackMaterial(null, meshName);
+  if ('map' in mat) mat.map = tuneTexture(mat.map || null, true);
+  if ('emissiveMap' in mat) mat.emissiveMap = tuneTexture(mat.emissiveMap || null, true);
+  if ('normalMap' in mat) mat.normalMap = tuneTexture(mat.normalMap || null);
+  if ('roughnessMap' in mat) mat.roughnessMap = tuneTexture(mat.roughnessMap || null);
+  if ('metalnessMap' in mat) mat.metalnessMap = tuneTexture(mat.metalnessMap || null);
+  if ('aoMap' in mat) mat.aoMap = tuneTexture(mat.aoMap || null);
+  if ('alphaMap' in mat) mat.alphaMap = tuneTexture(mat.alphaMap || null);
+  if ('displacementMap' in mat) mat.displacementMap = tuneTexture(mat.displacementMap || null);
+  if ('bumpMap' in mat) mat.bumpMap = tuneTexture(mat.bumpMap || null);
+  if ('lightMap' in mat) mat.lightMap = tuneTexture(mat.lightMap || null);
+  if (mat.isMeshPhysicalMaterial) ensurePhysicalMaterialDefaults(mat);
+  mat.userData = mat.userData || {};
+  delete mat.userData.forcedSurfaceKind;
+  const hasOriginalSource = !mat.userData?.fromMissingSourceMaterial;
+  const profile = getOriginalMaterialResponseProfile(mat);
+  mat.userData.surfaceKind = detectMaterialKind(mat, meshName);
+  mat.userData.originalResponseProfile = profile;
+  mat.userData.reflectivityScore = profile.reflectionScore;
+  mat.userData.dynamicReflectionStrength = profile.dynamicReflectionStrength;
+  if ('envMap' in mat) {
+    if (hasOriginalSource && (profile.shouldUseEnvironment || profile.hasTextureDrivenSurface || !!mat.userData?.reflectionTexture)) {
+      if (hasGlassEvidence(mat)) {
+        delete mat.userData.reflectionTexture;
+        mat.envMap = envRenderTarget.texture;
+        mat.envMapIntensity = THREE.MathUtils.clamp(profile.envMapIntensity ?? 0.18, 0.14, 0.26);
+      } else {
+        mat.envMap = mat.userData?.reflectionTexture || envRenderTarget.texture;
+        mat.envMapIntensity = Math.max(profile.envMapIntensity ?? 0, profile.hasTextureDrivenSurface ? 0.035 : 0.0);
+      }
+    } else if (!mat.userData?.reflectionTexture) {
+      mat.envMap = null;
+      mat.envMapIntensity = 0.0;
+    }
+  }
+  if (hasGlassEvidence(mat)) {
+    mat.transparent = true;
+    if ((mat.opacity ?? 1) >= 0.999 && profile.transmission > 0.02) mat.opacity = 0.999;
+    if (mat.isMeshPhysicalMaterial) {
+      mat.transmission = Math.max(mat.transmission ?? 0, profile.transmission);
+      mat.thickness = Math.max(mat.thickness ?? 0, profile.transmission > 0.02 ? 0.06 : 0);
+      mat.ior = Math.max(mat.ior ?? 1.0, 1.02);
+      mat.attenuationDistance = mat.attenuationDistance ?? 0;
+      mat.attenuationColor = mat.attenuationColor || new THREE.Color(0xffffff);
+    }
+    mat.depthWrite = false;
+    if (mat.side == null) mat.side = THREE.DoubleSide;
+  } else {
+    mat.depthWrite = mat.depthWrite ?? ((mat.opacity ?? 1) >= 0.999);
+  }
+  mat.needsUpdate = true;
+  return mat;
+}
+
+function createFallbackMaterial(source, meshName=''){
+  const hasSourceMaterial = !!source;
+  const inferred = hasSourceMaterial ? inferInitialMaterialMode(source, meshName) : 'default';
+  const transparent = inferred === 'glass' || (!!source?.transparent && hasSourceMaterial);
+  const fallback = new THREE.MeshPhysicalMaterial({
+    name: source?.name || '',
+    color: source?.color?.clone?.() || new THREE.Color(inferred === 'glass' ? 0xf2f7ff : inferred === 'plaster' ? 0xf4f4f2 : 0xe3e3e3),
+    map: tuneTexture(source?.map || null, true),
+    normalMap: tuneTexture(source?.normalMap || null),
+    transparent,
+    opacity: inferred === 'glass' ? 0.92 : 1,
+    transmission: inferred === 'glass' ? 0.9 : 0,
+    ior: inferred === 'glass' ? 1.45 : 1.45,
+    thickness: inferred === 'glass' ? 0.35 : 0,
+    roughness: inferred === 'metal' ? 0.12 : inferred === 'glass' ? 0.06 : 0.98,
+    metalness: inferred === 'metal' ? 0.94 : 0.0,
+    clearcoat: inferred === 'metal' ? 0.28 : inferred === 'glass' ? 0.18 : 0.0,
+    clearcoatRoughness: inferred === 'metal' ? 0.1 : inferred === 'glass' ? 0.08 : 0.32,
+    envMapIntensity: inferred === 'metal' ? 2.35 : inferred === 'glass' ? 1.1 : 0.0,
+    side: inferred === 'glass' ? THREE.DoubleSide : (source?.side ?? THREE.FrontSide)
+  });
+  fallback.userData.surfaceKind = inferred;
+  fallback.userData.originalDetectedKind = inferred;
+  fallback.userData.fromMissingSourceMaterial = !hasSourceMaterial;
+  fallback.shadowSide = THREE.FrontSide;
+  return applyReflectiveMaterialProfile(ensurePhysicalMaterialDefaults(fallback));
+}
+function safeEnhanceMaterial(material, meshName=''){
+  try {
+    return enhanceMaterial(material, meshName);
+  } catch (error) {
+    console.warn('Material fallback applied:', meshName, error);
+    return createFallbackMaterial(material, meshName);
+  }
+}
+function refreshModelMaterialMode(model){
+  if (!model?.object) return;
+  model.materialMode = sanitizeMaterialMode(model.materialMode || model.defaultMaterialMode || 'original');
+  model.defaultMaterialMode = sanitizeMaterialMode(model.defaultMaterialMode || 'original');
+  model.object.traverse(obj => {
+    if (!obj.isMesh) return;
+    if (!obj.userData.originalMaterials) {
+      const current = obj.material;
+      obj.userData.originalMaterials = Array.isArray(current) ? current.map(cloneSourceMaterial) : cloneSourceMaterial(current);
+    }
+    const originals = obj.userData.originalMaterials;
+    const buildForMode = (sourceMat) => {
+      const baseMat = cloneSourceMaterial(sourceMat);
+      if (model.materialMode === 'original') {
+        const nativeMat = applyMaterialGeometryHints(prepareNativeMaterial(baseMat, obj.name), obj);
+        nativeMat.shadowSide = THREE.FrontSide;
+        nativeMat.needsUpdate = true;
+        return nativeMat;
+      }
+      const physical = baseMat.isMeshPhysicalMaterial ? baseMat : buildPhysicalMaterialFrom(baseMat);
+      physical.userData = physical.userData || {};
+      physical.userData.forcedSurfaceKind = model.materialMode;
+      delete physical.userData.__baseSurface;
+      delete physical.userData.__basePointLight;
+      const next = applyMaterialGeometryHints(safeEnhanceMaterial(physical, obj.name), obj);
+      next.shadowSide = THREE.FrontSide;
+      next.needsUpdate = true;
+      return next;
+    };
+    obj.material = Array.isArray(originals) ? originals.map(buildForMode) : buildForMode(originals);
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    const hasGlass = mats.some(mat => mat?.transparent || (mat?.userData?.surfaceKind === 'glass') || ((mat?.transmission ?? 0) > 0.05));
+    if (hasGlass) applyGlassRenderPriority(mats[0], obj);
+    else obj.renderOrder = 1;
+  });
+  applyPointLightMaterialBoost(state.pointLightOn);
+}
+function dominantModelMaterialMode(model){
+  if (!model?.object) return 'auto';
+  const counts = { default:0, metal:0, glass:0 };
+  model.object.traverse(obj => {
+    if (!obj.isMesh || !obj.material) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach(mat => {
+      const kind = mat?.userData?.forcedSurfaceKind || mat?.userData?.surfaceKind || 'default';
+      if (counts[kind] != null) counts[kind] += 1;
+    });
+  });
+  const ranked = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  return ranked[0]?.[1] ? ranked[0][0] : 'default';
+}
+function updateTextureUI(){
+  const wrap = qs('#textureWrap'), dis = qs('#textureDisabledMsg'), m = getModel();
+  if (!m){
+    wrap.style.display = 'none';
+    dis.style.display = '';
+    ['materialGeneral','materialMetal','materialGlass','materialReset'].forEach(id => qs('#'+id).classList.remove('active'));
+    qs('#materialModeHint').textContent = '현재: 선택 없음';
+    return;
+  }
+  wrap.style.display = '';
+  dis.style.display = 'none';
+  const mode = sanitizeMaterialMode(m.materialMode || m.defaultMaterialMode || 'original');
+  const originalKinds = summarizeOriginalKindsOnModel(m);
+  const originalLabel = getKindsSummaryLabel(originalKinds);
+  qs('#materialGeneral').classList.toggle('active', mode === 'default');
+  qs('#materialMetal').classList.toggle('active', mode === 'metal');
+  qs('#materialGlass').classList.toggle('active', mode === 'glass');
+  qs('#materialReset').classList.remove('active');
+  qs('#materialModeHint').textContent = mode === 'original'
+    ? (m.hasOriginalMaterial ? `현재: 원본 재질` : `현재: 기본재질 (원본 재질 없음)`)
+    : `현재: ${getMaterialUiLabel(mode)} · 분석: ${originalLabel}`;
+}
+
+function setSelectedMaterialMode(mode){
+  const m = getModel();
+  if (!m) return;
+  const next = sanitizeMaterialMode(mode);
+  m.materialMode = next;
+  refreshModelMaterialMode(m);
+  updateTextureUI();
+  toast(`질감 타입: ${getMaterialUiLabel(next)}`);
+}
+function resetSelectedMaterialMode(){
+  const m = getModel();
+  if (!m) return;
+  m.materialMode = getModelDefaultMaterialMode(m);
+  refreshModelMaterialMode(m);
+  updateTextureUI();
+  toast(m.hasOriginalMaterial ? '질감 초기화: 원본 재질' : '질감 초기화: 기본재질');
+}
+qs('#materialGeneral').onclick = () => setSelectedMaterialMode('default');
+qs('#materialMetal').onclick = () => setSelectedMaterialMode('metal');
+qs('#materialGlass').onclick = () => setSelectedMaterialMode('glass');
+qs('#materialReset').onclick = () => resetSelectedMaterialMode();
+
+function updateSelectedMaterialSetting(){ return; }
+
+function enhanceMaterial(material, meshName=''){
+  let m = material;
+  if (!m) return createFallbackMaterial(null, meshName);
+  if (!m.isMeshPhysicalMaterial) {
+    m = buildPhysicalMaterialFrom(m);
+  }
+  ensurePhysicalMaterialDefaults(m);
+
+  m.map = tuneTexture(m.map, true);
+  m.emissiveMap = tuneTexture(m.emissiveMap, true);
+  m.normalMap = tuneTexture(m.normalMap);
+  m.roughnessMap = tuneTexture(m.roughnessMap);
+  m.metalnessMap = tuneTexture(m.metalnessMap);
+  m.aoMap = tuneTexture(m.aoMap);
+  m.alphaMap = tuneTexture(m.alphaMap);
+  m.displacementMap = tuneTexture(m.displacementMap);
+  m.bumpMap = tuneTexture(m.bumpMap);
+  m.lightMap = tuneTexture(m.lightMap);
+
+  const kind = sanitizeMaterialMode(detectMaterialKind(m, meshName));
+  m.userData.surfaceKind = kind;
+  const transparent = kind === 'glass' || !!m.transparent || (m.opacity ?? 1) < 1;
+  m.transparent = transparent;
+  if (transparent && (m.opacity ?? 1) >= 1) m.opacity = 0.999;
+
+  if (kind === 'glass') {
+    const settings = getMaterialSettingsFromTarget(m);
+    const nativeGlass = isNativeTransmissionGlass(m);
+    m.transmission = nativeGlass
+      ? THREE.MathUtils.clamp(Math.max(m.transmission ?? 0, 0.88), 0.84, 0.92)
+      : THREE.MathUtils.clamp(Math.max(m.transmission ?? 0.2, settings.glassTransmission), 0.80, 0.90);
+    m.ior = Math.max(m.ior ?? 1.12, 1.45);
+    m.thickness = Math.max(m.thickness ?? 0.08, nativeGlass ? 0.58 : 0.66);
+    m.roughness = nativeGlass
+      ? THREE.MathUtils.clamp(m.roughness ?? 0.14, 0.12, 0.19)
+      : THREE.MathUtils.clamp(m.roughness ?? 0.16, 0.14, 0.24);
+    m.clearcoat = Math.max(m.clearcoat ?? 0.05, 0.12);
+    m.clearcoatRoughness = THREE.MathUtils.clamp(m.clearcoatRoughness ?? 0.12, 0.08, 0.18);
+    m.envMap = envRenderTarget.texture;
+    m.envMapIntensity = nativeGlass
+      ? THREE.MathUtils.clamp(m.envMapIntensity ?? 0.18, 0.14, 0.26)
+      : THREE.MathUtils.clamp(m.envMapIntensity ?? 0.2, 0.16, 0.30);
+    m.attenuationDistance = Math.max(m.attenuationDistance ?? 0, nativeGlass ? 0.95 : 2.2);
+    m.attenuationColor = new THREE.Color(0xf4f8ff);
+    m.side = THREE.FrontSide;
+    m.depthWrite = false;
+    if ('specularIntensity' in m) {
+      m.specularIntensity = nativeGlass
+        ? Math.max(m.specularIntensity ?? 0.72, 0.72)
+        : Math.max(m.specularIntensity ?? 0.78, 0.68);
+    }
+    m.opacity = nativeGlass
+      ? Math.max(m.opacity ?? 1, 0.998)
+      : Math.max(settings.glassOpacity, 0.92);
+    applyGlassEdgeShader(m);
+  } else if (kind === 'metal') {
+    clearGlassEdgeShader(m);
+    m.metalness = Math.max(m.metalness ?? 0.3, 0.88);
+    m.roughness = Math.min(m.roughness ?? 0.3, 0.22);
+    m.clearcoat = Math.max(m.clearcoat ?? 0.03, 0.1);
+    m.clearcoatRoughness = Math.min(m.clearcoatRoughness ?? 0.24, 0.16);
+    m.envMapIntensity = Math.max(m.envMapIntensity ?? 0.9, 1.15);
+    m.depthWrite = true;
+    m.opacity = 1;
+  } else if (kind === 'plaster') {
+    clearPlasterMaps(m);
+    m.color = new THREE.Color(0xf4f4f2);
+    m.transmission = 0;
+    m.metalness = 0.02;
+    m.roughness = 0.94;
+    m.clearcoat = 0;
+    m.clearcoatRoughness = 0.22;
+    m.envMapIntensity = 0.08;
+    m.transparent = false;
+    m.opacity = 1;
+    m.side = THREE.FrontSide;
+    m.depthWrite = true;
+  } else {
+    m.transmission = 0;
+    m.metalness = THREE.MathUtils.clamp(m.metalness ?? 0.08, 0, 0.55);
+    m.roughness = THREE.MathUtils.clamp(m.roughness ?? 0.62, 0.22, 0.96);
+    m.clearcoat = Math.min(m.clearcoat ?? 0.04, 0.08);
+    m.clearcoatRoughness = THREE.MathUtils.clamp(m.clearcoatRoughness ?? 0.24, 0.16, 0.36);
+    m.envMapIntensity = THREE.MathUtils.clamp(m.envMapIntensity ?? 0.75, 0.45, 1.02);
+    m.depthWrite = true;
+  }
+  m.toneMapped = true;
+  m.shadowSide = THREE.FrontSide;
+  ensurePhysicalMaterialDefaults(m);
+  return applyReflectiveMaterialProfile(m);
+}
+
+
+async function loadModelAsset({ name, url, sourceType='file', sourceUrl='', sourceFile=null, sourceBundlePath='', sourceAssetKey='', revoke=false, transform=null, visible=true, selectOnLoad=true, fitOnLoad=true, toastOnLoad=true, materialMode='original', materialSettings=null, defaultMaterialMode=null, defaultMaterialSettings=null, deferUiRefresh=false, skipLoadingOverlay=false, skipInitialMaterialRefresh=false }){
+  const ext = getExt(name);
+  try {
+    if (!skipLoadingOverlay) showLoading(true);
+    let raw;
+    if (ext === 'glb' || ext === 'gltf') raw = (await gltfLoader.loadAsync(url)).scene;
+    else if (ext === 'obj') raw = await new OBJLoader().loadAsync(url);
+    else if (ext === 'stl') {
+      const geo = await new STLLoader().loadAsync(url); geo.computeVertexNormals();
+      raw = new THREE.Mesh(geo, new THREE.MeshPhysicalMaterial({ color:0x9aa5ff, roughness:.36, metalness:.18, clearcoat:.18, envMapIntensity:1.2 }));
+    } else if (ext === 'fbx') raw = await new FBXLoader().loadAsync(url);
+    else throw new Error('지원하지 않는 형식');
+
+    let inferredKinds = [];
+    let hasOriginalSourceMaterial = false;
+    raw.traverse(c => {
+      if (c.isMesh){
+        const hadOriginalMaterial = !!c.material;
+        if (hadOriginalMaterial) hasOriginalSourceMaterial = true;
+        if (!c.material) c.material = createFallbackMaterial(null, `${name} ${c.name}`);
+        const tagMaterial = (mat) => {
+          if (!mat) return mat;
+          mat.userData = mat.userData || {};
+          if (!hadOriginalMaterial) mat.userData.fromMissingSourceMaterial = true;
+          const inferred = detectMaterialKind(mat, `${name} ${c.name}`);
+          mat.userData.originalDetectedKind = inferred;
+          inferredKinds.push(inferred);
+          return mat;
+        };
+        if (Array.isArray(c.material)) c.material.forEach(tagMaterial);
+        else tagMaterial(c.material);
+        c.userData.originalMaterials = Array.isArray(c.material) ? c.material.map(cloneSourceMaterial) : cloneSourceMaterial(c.material);
+        if (Array.isArray(c.material)) c.material = c.material.map(mat => {
+          const next = applyMaterialGeometryHints(safeEnhanceMaterial(mat, `${name} ${c.name}`), c);
+          next.shadowSide = THREE.FrontSide;
+          next.needsUpdate = true;
+          if (next.userData.surfaceKind === 'glass') applyGlassRenderPriority(next, c);
+          return next;
+        });
+        else {
+          c.material = applyMaterialGeometryHints(safeEnhanceMaterial(c.material, `${name} ${c.name}`), c);
+          c.material.shadowSide = THREE.FrontSide;
+          c.material.needsUpdate = true;
+          if (c.material.userData.surfaceKind === 'glass') applyGlassRenderPriority(c.material, c);
+        }
+        c.castShadow = true;
+        c.receiveShadow = true;
+        if (!c.renderOrder) c.renderOrder = 1;
+        if (c.geometry && !c.geometry.attributes.normal) c.geometry.computeVertexNormals();
+      }
+    });
+    normalizeRawObject(raw);
+
+    const pivot = new THREE.Group();
+    const id = state.nextId++;
+    pivot.userData.modelId = id;
+    pivot.add(raw);
+    scene.add(pivot);
+
+    const normalized = normalizeTransform(transform);
+    const explicitPreferredMode = typeof defaultMaterialMode === 'string' && defaultMaterialMode ? defaultMaterialMode : ((typeof materialMode === 'string' && materialMode && materialMode !== 'original') ? materialMode : '');
+    const inferredDefault = sanitizeMaterialMode(explicitPreferredMode || (hasOriginalSourceMaterial ? 'original' : 'default'));
+    const normalizedMaterialSettings = normalizeMaterialSettings(materialSettings || defaultMaterialSettings || { metalReflectivity:1.15, glassTransmission:0.9, glassOpacity:0.92 });
+    const model = {
+      id,
+      name,
+      ext:ext.toUpperCase(),
+      object:pivot,
+      visible:visible !== false,
+      source:{ type:sourceType, url:sourceUrl || (sourceType === 'url' ? url : ''), file: sourceFile || null, fileName: sourceFile?.name || name, bundlePath: sourceBundlePath || '', assetKey: sourceAssetKey || ((sourceType === 'url' ? (sourceUrl || url) : '') || `${sourceType}:${sourceFile?.name || name}`) },
+      transform: normalized,
+      materialMode: inferredDefault,
+      defaultMaterialMode: inferredDefault,
+      hasOriginalMaterial: hasOriginalSourceMaterial,
+      originalMaterialKinds: [...new Set(inferredKinds.filter(Boolean))],
+      materialSettings: normalizedMaterialSettings,
+      defaultMaterialSettings: { ...normalizedMaterialSettings }
+    };
+    state.models.push(model);
+    applyMaterialSettingsToModel(model);
+    applyTransform(model);
+    model.object.visible = model.visible;
+    if (state.floorPlaced) {
+      model.floorRestoreY = model.transform.position.y;
+      const box = new THREE.Box3().setFromObject(model.object);
+      if (!box.isEmpty()) {
+        model.transform.position.y += -box.min.y;
+        applyTransform(model);
+      }
+    }
+    if (!skipInitialMaterialRefresh) refreshModelMaterialMode(model);
+    if (!deferUiRefresh) renderList();
+    if (selectOnLoad) selectModel(id, false);
+    if (fitOnLoad) fitScene();
+    if (toastOnLoad) toast(`${name} 로드 완료`);
+    return model;
+  } catch(e){
+    console.error(e);
+    const message = String(e?.message || e || '알 수 없는 오류');
+    const low = message.toLowerCase();
+    let friendly = message;
+    if (ext === 'glb' || ext === 'gltf') {
+      if (low.includes('draco')) friendly = 'DRACO 압축 GLB를 읽는 중 오류가 발생했습니다.';
+      else if (low.includes('meshopt')) friendly = 'Meshopt 압축 GLB를 읽는 중 오류가 발생했습니다.';
+      else if (low.includes('ktx2') || low.includes('basis')) friendly = '압축 텍스처(KTX2/Basis) GLB를 읽는 중 오류가 발생했습니다.';
+      else if (low.includes("reading 'x'") || low.includes('reading \"x\"')) friendly = '재질 보강 처리 중 일부 GLB 머티리얼 속성이 비어 있어 로드에 실패했습니다.';
+      else if (low.includes('json') || low.includes('unexpected')) friendly = 'GLB/GLTF 파일 구조를 읽는 중 오류가 발생했습니다.';
+    }
+    toast(`로드 실패: ${friendly}`);
+    throw e;
+  } finally {
+    if (revoke) URL.revokeObjectURL(url);
+    if (!skipLoadingOverlay) showLoading(false);
+  }
+}
+
+async function loadFile(file, options = {}){
+  const url = URL.createObjectURL(file);
+  const hasModels = state.models.length > 0;
+  const assetKey = `file:${file.name}:${file.size}:${file.lastModified}`;
+  return loadModelAsset({ name:file.name, url, sourceType:'file', sourceFile:file, sourceAssetKey:assetKey, revoke:true, fitOnLoad: options.fitOnLoad ?? !hasModels, ...options });
+}
+
+function modelNameFromUrl(input){
+  try {
+    const u = new URL(input, location.href);
+    return decodeURIComponent((u.pathname.split('/').pop() || 'remote-model').trim()) || 'remote-model';
+  } catch {
+    const clean = String(input).split('?')[0].split('#')[0];
+    return decodeURIComponent((clean.split('/').pop() || 'remote-model').trim()) || 'remote-model';
+  }
+}
+
+async function loadRemoteModel(inputUrl, options = {}){
+  const resolved = new URL(String(inputUrl).trim(), location.href).href;
+  const name = options.name || modelNameFromUrl(resolved);
+  const hasModels = state.models.length > 0;
+  return loadModelAsset({ name, url:resolved, sourceType:'url', sourceUrl:resolved, sourceAssetKey:resolved, fitOnLoad: options.fitOnLoad ?? !hasModels, ...options });
+}
+
+function renderList(){
+  updateLightFromOrbit(state.lightAngle, state.lightHeight, state.lightRadius);
+  const list = qs('#modelList');
+  if (!state.models.length){ list.innerHTML = '<div class="emptyList">업로드된 소재가 없습니다</div>'; setEmpty(); return; }
+  setEmpty();
+  list.innerHTML = '';
+  for (const m of state.models){
+    const item = document.createElement('div');
+    item.className = 'modelItem' + (m.id === state.selectedId ? ' selected' : '');
+    item.innerHTML = `<div class="name"><span class="ext">${m.ext}</span>${escapeHtml(m.name.replace(/\.[^.]+$/, ''))}</div>
+      <div class="modelActions">
+        <button class="miBtn" data-act="dup" title="같은 소재 추가"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="miBtn ${m.visible ? '' : 'off'}" data-act="vis"><svg viewBox="0 0 24 24">${m.visible ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z"/><circle cx="12" cy="12" r="3"/>' : '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C5 20 1 12 1 12a21.8 21.8 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.77 21.77 0 0 1-2.16 3.19"/><path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/><path d="M1 1l22 22"/>'}</svg></button>
+        <button class="miBtn danger" data-act="del"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+      </div>`;
+    item.querySelector('.name').onclick = () => handleModelTap(m.id);
+    item.querySelector('[data-act="dup"]').onclick = (e) => { e.stopPropagation(); duplicateModel(m.id); };
+    item.querySelector('[data-act="vis"]').onclick = (e) => { e.stopPropagation(); m.visible = !m.visible; m.object.visible = m.visible; if (!m.visible && state.selectedId === m.id) state.boxOnly = false; updateSelectionVisuals(); syncPerspectiveBoxButton(); renderList(); };
+    item.querySelector('[data-act="del"]').onclick = (e) => { e.stopPropagation(); deleteModel(m.id); };
+    list.appendChild(item);
+  }
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function getModel(id=state.selectedId){ return state.models.find(m => m.id === id); }
+
+function cycleSelectedDragMode(){
+  const m = getModel();
+  if (!m || !m.visible) return;
+  if (state.boxOnly) state.boxOnly = false;
+  if (state.dragMode === 'off') setDragMode('screen');
+  else if (state.dragMode === 'screen' || state.dragMode === 'ground') setDragMode('rotate');
+  else setDragMode('off');
+}
+
+function handleModelTap(id){
+  const sameModel = state.selectedId === id;
+  selectModel(id, false);
+  if (sameModel) cycleSelectedDragMode();
+  else setDragMode('screen');
+}
+
+function selectModel(id, autoMove=false){
+  state.selectedId = id;
+  const m = getModel();
+  renderList(); updateTransformUI(); updateTextureUI();
+  if (m && m.visible){
+    if (state.boxOnly) updateSelectionVisuals();
+    else updateSelectionVisuals();
+  } else {
+    state.boxOnly = false;
+    updateSelectionVisuals();
+    setDragMode('off');
+    syncPerspectiveBoxButton();
+  }
+}
+
+function clearSelection(){ state.selectedId = null; state.boxOnly = false; updateSelectionVisuals(); updateTransformUI(); updateTextureUI(); refreshSelectedMaterialSliders(); renderList(); setDragMode('off'); syncPerspectiveBoxButton(); }
+
+function clearAllModels(){
+  for (const m of [...state.models]){
+    if (m.reflectionCubeCamera) scene.remove(m.reflectionCubeCamera);
+    m.reflectionRenderTarget?.dispose?.();
+    scene.remove(m.object);
+    disposeObject(m.object);
+  }
+  state.models = [];
+  state.floorPlaced = false;
+  clearSelection();
+  renderList();
+  setEmpty();
+}
+
+function deleteModel(id){
+  const i = state.models.findIndex(m => m.id === id); if (i < 0) return;
+  const m = state.models[i];
+  if (m.reflectionCubeCamera) scene.remove(m.reflectionCubeCamera);
+  m.reflectionRenderTarget?.dispose?.();
+  scene.remove(m.object); disposeObject(m.object); state.models.splice(i,1);
+  if (state.selectedId === id) clearSelection();
+  renderList(); setEmpty(); toast(`${m.name} 삭제됨`);
+}
+
+function cloneOriginalMaterialSet(originals){
+  return Array.isArray(originals) ? originals.map(cloneSourceMaterial) : cloneSourceMaterial(originals);
+}
+
+function cloneModelGraphForDuplicate(sourceRoot){
+  const cloneRoot = sourceRoot.clone(true);
+  const srcMeshes = [];
+  const dstMeshes = [];
+  sourceRoot.traverse(obj => { if (obj.isMesh) srcMeshes.push(obj); });
+  cloneRoot.traverse(obj => { if (obj.isMesh) dstMeshes.push(obj); });
+  srcMeshes.forEach((srcMesh, index) => {
+    const dstMesh = dstMeshes[index];
+    if (!dstMesh) return;
+    dstMesh.userData = { ...srcMesh.userData };
+    if (srcMesh.userData?.originalMaterials) {
+      dstMesh.userData.originalMaterials = cloneOriginalMaterialSet(srcMesh.userData.originalMaterials);
+    }
+    if (srcMesh.material) {
+      dstMesh.material = Array.isArray(srcMesh.material) ? srcMesh.material.map(mat => mat?.clone ? mat.clone() : cloneSourceMaterial(mat)) : (srcMesh.material.clone ? srcMesh.material.clone() : cloneSourceMaterial(srcMesh.material));
+    }
+    dstMesh.castShadow = srcMesh.castShadow;
+    dstMesh.receiveShadow = srcMesh.receiveShadow;
+    dstMesh.renderOrder = srcMesh.renderOrder;
+  });
+  return cloneRoot;
+}
+
+function duplicateModel(id){
+  const source = getModel(id);
+  if (!source?.object) return;
+  const sourceRoot = source.object.children[0] || source.object;
+  const cloneRoot = cloneModelGraphForDuplicate(sourceRoot);
+  const pivot = new THREE.Group();
+  const newId = state.nextId++;
+  pivot.userData.modelId = newId;
+  pivot.add(cloneRoot);
+  scene.add(pivot);
+  const box = new THREE.Box3().setFromObject(source.object);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  const offsetX = Math.max(size.x * 0.28, 0.25);
+  const transform = JSON.parse(JSON.stringify(normalizeTransform(source.transform)));
+  transform.position.x += offsetX;
+  const model = {
+    id: newId,
+    name: source.name,
+    ext: source.ext,
+    object: pivot,
+    visible: true,
+    source: { ...(source.source || {}) },
+    transform,
+    materialMode: sanitizeMaterialMode(source.materialMode || source.defaultMaterialMode || 'original'),
+    defaultMaterialMode: sanitizeMaterialMode(source.defaultMaterialMode || 'original'),
+    originalMaterialKinds: [...new Set((source.originalMaterialKinds || []).filter(Boolean))],
+    materialSettings: normalizeMaterialSettings(source.materialSettings || defaultMaterialSettings()),
+    defaultMaterialSettings: { ...normalizeMaterialSettings(source.defaultMaterialSettings || source.materialSettings || defaultMaterialSettings()) }
+  };
+  if (state.floorPlaced && typeof source.floorRestoreY === 'number') model.floorRestoreY = source.floorRestoreY;
+  state.models.push(model);
+  applyMaterialSettingsToModel(model);
+  applyTransform(model);
+  model.object.visible = true;
+  refreshModelMaterialMode(model);
+  selectModel(newId, false);
+  updateSelectionVisuals();
+  renderList();
+  toast(`${source.name} 복제 추가`);
+}
+
+function disposeObject(obj){ obj.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material){ const arr = Array.isArray(c.material) ? c.material : [c.material]; for (const mat of arr){ for (const k in mat){ if (mat[k] && mat[k].isTexture) mat[k].dispose(); } mat.dispose?.(); } } }); }
+
+function normalizeTransform(transform){
+  const next = {
+    position:{ x:0, y:0, z:0 },
+    rotation:{ x:0, y:0, z:0 },
+    scale:{ x:1, y:1, z:1, uniform:1 }
+  };
+  if (!transform) return next;
+  ['x','y','z'].forEach(axis => {
+    if (Number.isFinite(transform?.position?.[axis])) next.position[axis] = transform.position[axis];
+    if (Number.isFinite(transform?.rotation?.[axis])) next.rotation[axis] = transform.rotation[axis];
+    if (Number.isFinite(transform?.scale?.[axis])) next.scale[axis] = transform.scale[axis];
+  });
+  const uniform = Number.isFinite(transform?.scale?.uniform) ? transform.scale.uniform : (next.scale.x + next.scale.y + next.scale.z) / 3;
+  next.scale.uniform = uniform;
+  return next;
+}
+
+function applyTransform(m){
+  if (!m) return;
+  m.object.position.set(m.transform.position.x, m.transform.position.y, m.transform.position.z);
+  m.object.rotation.set(THREE.MathUtils.degToRad(m.transform.rotation.x), THREE.MathUtils.degToRad(m.transform.rotation.y), THREE.MathUtils.degToRad(m.transform.rotation.z));
+  m.object.scale.set(m.transform.scale.x, m.transform.scale.y, m.transform.scale.z);
+  updateLightFromOrbit(state.lightAngle, state.lightHeight, state.lightRadius);
+  if (state.selectedId === m.id) updateRotateHandle();
+}
+
+function syncFloorPlacementButton(){
+  qs('#toggleFloorPlacement').textContent = state.floorPlaced ? '공간에 배치' : '바닥에 배치';
+}
+
+function applyAllModelsToFloor(enable){
+  if (enable) {
+    for (const m of state.models){
+      m.floorRestoreY = m.transform.position.y;
+      const box = new THREE.Box3().setFromObject(m.object);
+      if (box.isEmpty()) continue;
+      const delta = -box.min.y;
+      m.transform.position.y += delta;
+      applyTransform(m);
+    }
+    state.floorPlaced = true;
+    toast('모든 소재를 바닥에 배치했습니다');
+  } else {
+    for (const m of state.models){
+      if (typeof m.floorRestoreY === 'number') {
+        m.transform.position.y = m.floorRestoreY;
+        applyTransform(m);
+        m.floorRestoreY = m.transform.position.y;
+      }
+    }
+    state.floorPlaced = false;
+    toast('소재를 원래 높이로 복원했습니다');
+  }
+  syncFloorPlacementButton();
+  updateTransformUI();
+  updateTextureUI();
+  if (getModel()) updateSelectionVisuals();
+  updateRotateHandle();
+}
+
+function syncPair(kind, axis, value){ qsa(`[data-kind="${kind}"][data-axis="${axis}"]`).forEach(el => el.value = fmt(value)); }
+function updateTransformUI(){
+  const wrap = qs('#transformWrap'), dis = qs('#disabledMsg'), m = getModel();
+  if (!m){ wrap.style.display = 'none'; dis.style.display = ''; return; }
+  wrap.style.display = ''; dis.style.display = 'none';
+  const t = m.transform;
+  qs('#suRange').value = qs('#suNum').value = fmt(t.scale.uniform);
+  ['x','y','z'].forEach(a => {
+    syncPair('scale', a, t.scale[a]);
+    syncPair('rotation', a, t.rotation[a]);
+    syncPair('position', a, t.position[a]);
+  });
+}
+
+qsa('input[data-kind]').forEach(el => {
+  el.addEventListener('input', () => {
+    const m = getModel(); if (!m) return;
+    const kind = el.dataset.kind, axis = el.dataset.axis, val = parseFloat(el.value); if (isNaN(val)) return;
+    m.transform[kind][axis] = val;
+    qsa(`[data-kind="${kind}"][data-axis="${axis}"]`).forEach(other => { if (other !== el) other.value = fmt(val); });
+    if (kind === 'scale') m.transform.scale.uniform = (m.transform.scale.x + m.transform.scale.y + m.transform.scale.z) / 3;
+    applyTransform(m); updateSelectionVisuals();
+  });
+});
+
+function setUniform(v){ const m = getModel(); if (!m || isNaN(v)) return; m.transform.scale.uniform = v; m.transform.scale.x = v; m.transform.scale.y = v; m.transform.scale.z = v; ['x','y','z'].forEach(a => syncPair('scale',a,v)); qs('#suRange').value = qs('#suNum').value = fmt(v); applyTransform(m); updateSelectionVisuals(); }
+qs('#suRange').addEventListener('input', e => setUniform(parseFloat(e.target.value)));
+qs('#suNum').addEventListener('input', e => setUniform(parseFloat(e.target.value)));
+qs('#uniformScale').addEventListener('change', e => { qs('#uniformRow').style.display = e.target.checked ? '' : 'grid'; qs('#scaleXYZ').style.display = e.target.checked ? 'none' : 'block'; });
+qs('#toggleFloorPlacement').onclick = () => applyAllModelsToFloor(!state.floorPlaced);
+qs('#resetTransform').onclick = () => { const m = getModel(); if (!m) return; m.transform = { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scale:{x:1,y:1,z:1,uniform:1} }; delete m.floorRestoreY; applyTransform(m); updateTransformUI(); updateSelectionVisuals(); toast('변환 초기화'); };
+
+function syncControlMode(){
+  const on = state.dragMode !== 'off' && !!getModel();
+  if (state.viewMode === '2d') {
+    controls.enabled = false;
+    controls.enableRotate = false;
+    controls.enableZoom = false;
+    controls.enablePan = false;
+    sync2DHudButtons();
+    return;
+  }
+  controls.enabled = true;
+  controls.enableRotate = !on;
+  controls.enableZoom = !on;
+  controls.enablePan = !on;
+  sync2DHudButtons();
+}
+
+function setFloorMode(mode, showToast = true){
+  const next = ['white','grid','none'].includes(mode) ? mode : 'white';
+  state.floorMode = next;
+  state.showGrid = next === 'grid';
+  if (next === 'white') {
+    ground.visible = true;
+    ground.material = whiteFloorMaterial;
+    shadowCatcher.visible = true;
+    shadowCatcher.receiveShadow = true;
+  } else if (next === 'grid') {
+    ground.visible = false;
+    shadowCatcher.visible = true;
+    shadowCatcher.receiveShadow = true;
+  } else {
+    ground.visible = false;
+    shadowCatcher.visible = false;
+    shadowCatcher.receiveShadow = false;
+  }
+  grid.visible = next === 'grid';
+  const label = next === 'white' ? '흰 바닥' : next === 'grid' ? '그리드' : '바닥 없음';
+  qs('#floorLabel').textContent = label;
+  qs('#floorBtn').classList.toggle('active', next !== 'none');
+  if (showToast) toast(`바닥 모드: ${label}`);
+}
+
+function cycleFloorMode(){
+  const next = state.floorMode === 'white' ? 'grid' : state.floorMode === 'grid' ? 'none' : 'white';
+  setFloorMode(next, true);
+}
+
+function setDragMode(mode){
+  if (state.viewMode === '2d' && mode === 'ground') mode = 'screen';
+  state.dragMode = mode;
+  qs('#dragScreen').classList.toggle('active', mode === 'screen');
+  qs('#dragGround').classList.toggle('active', mode === 'ground');
+  qs('#dragRotate').classList.toggle('active', mode === 'rotate');
+  qs('#dragOff').classList.toggle('active', mode === 'off');
+  if (mode !== 'off' && state.boxOnly) state.boxOnly = false;
+  const on = mode !== 'off' && !!getModel();
+  qs('#dragBadge').style.display = on ? 'inline-flex' : 'none';
+  qs('#dragBadge').querySelector('span').textContent = mode === 'screen' ? '이동 모드' : mode === 'ground' ? '바닥 이동' : mode === 'rotate' ? '회전 모드' : '모드 끄기';
+  updateSelectionVisuals();
+  syncPerspectiveBoxButton();
+  syncControlMode();
+  sync2DHudButtons();
+}
+qs('#dragScreen').onclick = () => getModel() && setDragMode('screen');
+qs('#dragGround').onclick = () => getModel() && setDragMode('ground');
+qs('#dragRotate').onclick = () => getModel() && setDragMode('rotate');
+qs('#dragOff').onclick = () => setDragMode('off');
+qs('#dragBadge').onclick = () => setDragMode('off');
+qs('#floorBtn').onclick = cycleFloorMode;
+function syncPerspectiveBoxButton(){
+  const m = getModel();
+  qs('#boxBtn').classList.toggle('active', !!(state.boxOnly && m && m.visible));
+}
+function togglePerspectiveBox(){
+  const m = getModel();
+  if (!m || !m.visible) {
+    state.boxOnly = false;
+    syncPerspectiveBoxButton();
+    toast('먼저 소재를 선택하세요');
+    return;
+  }
+  if (state.boxOnly) {
+    state.boxOnly = false;
+    updateSelectionVisuals();
+    syncPerspectiveBoxButton();
+    toast('투시박스 끔');
+    return;
+  }
+  setDragMode('off');
+  state.boxOnly = true;
+  updateSelectionVisuals();
+  syncPerspectiveBoxButton();
+  toast('투시박스 켬');
+}
+qs('#boxBtn').onclick = togglePerspectiveBox;
+qs('#homeViewBtn').onclick = () => restoreHomeView();
+
+function updatePointer(event){ const r = renderer.domElement.getBoundingClientRect(); pointer.x = ((event.clientX - r.left) / r.width) * 2 - 1; pointer.y = -((event.clientY - r.top) / r.height) * 2 + 1; }
+function topModelFromIntersection(obj){ let cur = obj; while (cur && cur !== scene){ if (cur.userData.modelId) return getModel(cur.userData.modelId); cur = cur.parent; } return null; }
+function selectableRoots(){ return state.models.filter(m => m.visible).map(m => m.object); }
+function scaleSelectedByFactor(factor){
+  const m = getModel();
+  if (!m) return;
+  const next = THREE.MathUtils.clamp(m.transform.scale.uniform * factor, 0.05, 20);
+  m.transform.scale.uniform = next;
+  m.transform.scale.x = next;
+  m.transform.scale.y = next;
+  m.transform.scale.z = next;
+  qs('#suRange').value = qs('#suNum').value = fmt(next);
+  ['x','y','z'].forEach(a => syncPair('scale', a, next));
+  applyTransform(m);
+  selectionBox.setFromObject(m.object);
+}
+function getPinchDistance(){
+  const pts = [...pointerPositions.values()];
+  if (pts.length < 2) return 0;
+  return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+}
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  activePointers.add(e.pointerId);
+  pointerPositions.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  pointerDownInfo = { x:e.clientX, y:e.clientY, t:Date.now() };
+  state.dragMoved = false;
+  if (activePointers.size >= 2) {
+    state.dragging = false;
+    state.handleDragging = false;
+    if (state.dragMode !== 'off' && getModel()) {
+      state.pinchScaling = true;
+      state.pinchDistance = getPinchDistance();
+    }
+    syncControlMode();
+    return;
+  }
+  updatePointer(e); raycaster.setFromCamera(pointer, camera);
+  const selected = getModel();
+  const handleHits = [
+    ...(rotateHandleY.visible ? raycaster.intersectObject(rotateHandleY, false) : []),
+    ...(rotateHandleX.visible ? raycaster.intersectObject(rotateHandleX, false) : []),
+    ...(rotateHandleZ.visible ? raycaster.intersectObject(rotateHandleZ, false) : []),
+    ...(moveGuideX.visible ? raycaster.intersectObject(moveGuideX, false) : []),
+    ...(moveGuideY.visible ? raycaster.intersectObject(moveGuideY, false) : []),
+    ...(moveGuideZ.visible ? raycaster.intersectObject(moveGuideZ, false) : [])
+  ].sort((a,b)=>a.distance-b.distance);
+  if (selected && handleHits.length) {
+    state.handleDragging = true;
+    state.activeHandleAxis = handleHits[0].object.userData.handleAxis || '';
+    state.activeMoveAxis = handleHits[0].object.userData.moveAxis || '';
+    state.handleStartX = e.clientX;
+    state.handleStartY = e.clientY;
+    state.handleStartRotationY = selected.transform.rotation.y;
+    state.handleStartRotationX = selected.transform.rotation.x;
+    state.handleStartRotationZ = selected.transform.rotation.z;
+    state.handleStartPosition = { ...selected.transform.position };
+    controls.enabled = false;
+    e.preventDefault();
+    return;
+  }
+  const hits = raycaster.intersectObjects(selectableRoots(), true);
+  if (state.dragMode !== 'off' && selected){
+    const hitSelected = hits.find(h => topModelFromIntersection(h.object)?.id === selected.id);
+    if (hitSelected){
+      state.dragging = true;
+      if (state.dragMode === 'rotate') {
+        state.rotateStart = { x: e.clientX, y: e.clientY };
+      } else if (state.dragMode === 'ground') {
+        dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0,1,0), selected.object.position.clone());
+        raycaster.ray.intersectPlane(dragPlane, hitPoint);
+        dragOffset.copy(selected.object.position).sub(hitPoint);
+      } else {
+        const normal = new THREE.Vector3(); camera.getWorldDirection(normal).negate();
+        dragPlane.setFromNormalAndCoplanarPoint(normal, selected.object.position.clone());
+        raycaster.ray.intersectPlane(dragPlane, hitPoint);
+        dragOffset.copy(selected.object.position).sub(hitPoint);
+      }
+      controls.enabled = false;
+      e.preventDefault();
+    }
+  }
+}, { passive:false });
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (activePointers.has(e.pointerId)) pointerPositions.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const m = getModel();
+  if (state.pinchScaling && activePointers.size >= 2 && state.dragMode !== 'off' && m) {
+    const dist = getPinchDistance();
+    if (dist > 0 && state.pinchDistance > 0) {
+      const factor = THREE.MathUtils.clamp(dist / state.pinchDistance, 0.92, 1.08);
+      scaleSelectedByFactor(factor);
+      state.pinchDistance = dist;
+      updateTransformUI();
+    }
+    e.preventDefault();
+    return;
+  }
+  if (state.handleDragging && m) {
+    const dx = e.clientX - state.handleStartX;
+    const dy = e.clientY - state.handleStartY;
+    if (state.activeMoveAxis) {
+      const delta = state.activeMoveAxis === 'y' ? -dy * 0.01 : state.activeMoveAxis === 'x' ? dx * 0.01 : -dx * 0.01;
+      m.transform.position[state.activeMoveAxis] = state.handleStartPosition[state.activeMoveAxis] + delta;
+    } else if (state.activeHandleAxis === 'x') m.transform.rotation.x = state.handleStartRotationX + dy * 0.6;
+    else if (state.activeHandleAxis === 'z') m.transform.rotation.z = state.handleStartRotationZ + dx * 0.6;
+    else m.transform.rotation.y = state.handleStartRotationY + dx * 0.6;
+    applyTransform(m);
+    updateTransformUI();
+    updateSelectionVisuals();
+    e.preventDefault();
+    return;
+  }
+  if (!state.dragging || activePointers.size >= 2) return;
+  state.dragMoved = true;
+  if (!m) return;
+  if (state.dragMode === 'rotate') {
+    const dx = e.clientX - state.rotateStart.x;
+    const dy = e.clientY - state.rotateStart.y;
+    m.transform.rotation.y += dx * 0.4;
+    m.transform.rotation.x += dy * 0.4;
+    state.rotateStart = { x: e.clientX, y: e.clientY };
+    applyTransform(m);
+    updateTransformUI();
+    selectionBox.setFromObject(m.object);
+    updateRotateHandle();
+    e.preventDefault();
+    return;
+  }
+  updatePointer(e); raycaster.setFromCamera(pointer, camera);
+  if (raycaster.ray.intersectPlane(dragPlane, hitPoint)){
+    const p = hitPoint.clone().add(dragOffset);
+    m.transform.position.x = p.x;
+    m.transform.position.y = p.y;
+    m.transform.position.z = p.z;
+    applyTransform(m); updateTransformUI(); updateSelectionVisuals();
+  }
+  e.preventDefault();
+}, { passive:false });
+
+renderer.domElement.addEventListener('pointerup', (e) => {
+  activePointers.delete(e.pointerId);
+  pointerPositions.delete(e.pointerId);
+  if (activePointers.size < 2) state.pinchScaling = false;
+  const movedDist = Math.hypot(e.clientX - pointerDownInfo.x, e.clientY - pointerDownInfo.y);
+  const isTap = movedDist < 8 && (Date.now() - pointerDownInfo.t) < 300;
+  if (state.dragging){ state.dragging = false; syncControlMode(); }
+  if (state.handleDragging){ state.handleDragging = false; state.activeHandleAxis = ''; state.activeMoveAxis = ''; syncControlMode(); return; }
+  if (!isTap) return;
+  updatePointer(e); raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(selectableRoots(), true);
+  if (hits.length){ const m = topModelFromIntersection(hits[0].object); if (m) handleModelTap(m.id); }
+  else {
+    if (state.dragMode !== 'off') setDragMode('off');
+    else clearSelection();
+  }
+}, { passive:false });
+
+renderer.domElement.addEventListener('pointercancel', (e) => {
+  activePointers.delete(e.pointerId);
+  pointerPositions.delete(e.pointerId);
+  state.pinchScaling = false;
+  if (state.dragging) state.dragging = false;
+  if (state.handleDragging) { state.handleDragging = false; state.activeHandleAxis = ''; state.activeMoveAxis = ''; }
+  syncControlMode();
+}, { passive:false });
+
+renderer.domElement.addEventListener('wheel', (e) => {
+  if (state.dragMode !== 'off' && getModel()) {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.05 : 0.95;
+    scaleSelectedByFactor(factor);
+    updateTransformUI();
+  }
+}, { passive:false });
+
+function fitScene(){
+  const box = new THREE.Box3(); let has = false;
+  for (const m of state.models){ if (!m.visible) continue; const b = new THREE.Box3().setFromObject(m.object); if (!b.isEmpty()){ box.union(b); has = true; } }
+  if (!has) return;
+  const size = new THREE.Vector3(), center = new THREE.Vector3(); box.getSize(size); box.getCenter(center);
+  const maxDim = Math.max(size.x,size.y,size.z, 1); const dist = maxDim * 2.4;
+  const dir = new THREE.Vector3(1,0.9,1.2).normalize();
+  const pos = center.clone().add(dir.multiplyScalar(dist));
+  perspectiveCam.position.copy(pos); orthoCam.position.copy(pos); controls.target.copy(center);
+  const a = canvasWrap.clientWidth / canvasWrap.clientHeight; const s = maxDim * 1.4;
+  orthoCam.left = -s * a; orthoCam.right = s * a; orthoCam.top = s; orthoCam.bottom = -s; orthoCam.updateProjectionMatrix();
+  controls.update();
+  updateLightFromOrbit(state.lightAngle, state.lightHeight, state.lightRadius);
+  saveHomeView();
+  if (state.viewMode === '2d') sync2DViewFromCurrentCamera({ preserveRoll:true, refreshLight:true });
+}
+
+function applyTheme(){
+  document.body.classList.toggle('light', state.theme === 'light');
+  if (state.theme === 'light'){
+    renderer.setClearColor(0xeef2f7, 1); ambient.intensity = 0.6; hemi.intensity = 0.34; if (grid.material.color) grid.material.color.setHex(0xdbe1ea); if (grid.material.opacity !== undefined) grid.material.opacity = .22;
+  } else {
+    renderer.setClearColor(0x000000, 0); ambient.intensity = 0.42; hemi.intensity = 0.24; if (grid.material.color) grid.material.color.setHex(0xa9b4c6); if (grid.material.opacity !== undefined) grid.material.opacity = .22;
+  }
+}
+qs('#themeBtn').onclick = () => { state.theme = state.theme === 'dark' ? 'light' : 'dark'; applyTheme(); toast(state.theme === 'light' ? '밝은 배경 모드' : '어두운 배경 모드'); qs('#themeBtn').classList.toggle('active', state.theme === 'light'); };
+
+function currentLightAngle(){
+  return ((Number(state.lightAngle) % 360) + 360) % 360;
+}
+function applyPointLightMaterialBoost(enabled){
+  for (const model of state.models) {
+    model.object.traverse(obj => {
+      if (!obj.isMesh || !obj.material) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach(mat => {
+        if (!mat || !mat.isMeshPhysicalMaterial) return;
+        if (!mat.userData.__basePointLight) {
+          mat.userData.__basePointLight = {
+            roughness: mat.roughness,
+            metalness: mat.metalness,
+            clearcoat: mat.clearcoat,
+            clearcoatRoughness: mat.clearcoatRoughness,
+            transmission: mat.transmission,
+            specularIntensity: mat.specularIntensity,
+            envMapIntensity: mat.envMapIntensity
+          };
+        }
+        const base = mat.userData.__basePointLight;
+        const kind = mat.userData.surfaceKind || 'default';
+        if (enabled && (kind === 'glass' || kind === 'metal')) {
+          if (kind === 'glass') {
+            mat.transmission = THREE.MathUtils.clamp(Math.max(base.transmission ?? 0.9, 0.9), 0.9, 0.965);
+            mat.clearcoat = Math.max(base.clearcoat ?? 0.18, 0.22);
+            mat.clearcoatRoughness = THREE.MathUtils.clamp(base.clearcoatRoughness ?? 0.1, 0.08, 0.16);
+            mat.roughness = Math.max((base.roughness ?? 0.12) * 0.98, 0.1);
+            if ('specularIntensity' in mat) mat.specularIntensity = Math.max(base.specularIntensity ?? 0.6, 0.85);
+          }
+          if (kind === 'metal') {
+            mat.clearcoat = Math.max(base.clearcoat ?? 0.1, 0.14);
+            mat.clearcoatRoughness = Math.min(base.clearcoatRoughness ?? 0.18, 0.16);
+            mat.roughness = Math.max((base.roughness ?? 0.2) * 1.08, 0.18);
+            mat.metalness = Math.min(Math.max(base.metalness ?? 0.94, 0.94), 1.0);
+            if ('specularIntensity' in mat) mat.specularIntensity = Math.min(Math.max(base.specularIntensity ?? 0.55, 0.6), 0.78);
+          }
+        } else {
+          mat.roughness = base.roughness;
+          mat.metalness = base.metalness;
+          mat.clearcoat = base.clearcoat;
+          mat.clearcoatRoughness = base.clearcoatRoughness;
+          mat.transmission = base.transmission;
+          mat.envMapIntensity = base.envMapIntensity;
+          if ('specularIntensity' in mat && base.specularIntensity != null) mat.specularIntensity = base.specularIntensity;
+        }
+        applyReflectiveMaterialProfile(mat);
+        mat.needsUpdate = true;
+      });
+    });
+  }
+}
+function updateGlassShadowOpacity(){
+  let glassCount = 0;
+  let otherCount = 0;
+  let glassAccum = 0;
+  const glassModels = [];
+  const union = new THREE.Box3();
+  let hasUnion = false;
+  for (const model of state.models) {
+    if (!model?.visible || !model.object) continue;
+    const box = new THREE.Box3().setFromObject(model.object);
+    let modelGlassCount = 0;
+    let transmissionSum = 0;
+    let opacitySum = 0;
+    let thicknessSum = 0;
+    let roughnessSum = 0;
+    model.object.traverse(obj => {
+      if (!obj.isMesh || !obj.material || !obj.castShadow) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach(mat => {
+        if (!mat) return;
+        const kind = mat.userData?.forcedSurfaceKind || mat.userData?.surfaceKind || '';
+        if (kind === 'glass' || isNativeTransmissionGlass(mat)) {
+          glassCount += 1;
+          modelGlassCount += 1;
+          const transmission = THREE.MathUtils.clamp(mat.transmission ?? 0.88, 0, 1);
+          const opacity = THREE.MathUtils.clamp(mat.opacity ?? 1, 0, 1);
+          const thickness = THREE.MathUtils.clamp((mat.thickness ?? 0.4) / 1.2, 0, 1);
+          const roughness = THREE.MathUtils.clamp(mat.roughness ?? 0.15, 0, 1);
+          transmissionSum += transmission;
+          opacitySum += opacity;
+          thicknessSum += thickness;
+          roughnessSum += roughness;
+          glassAccum += THREE.MathUtils.clamp((1.0 - transmission) * 0.62 + (1.0 - opacity) * 0.12 + thickness * 0.24 + roughness * 0.12, 0.05, 0.28);
+        } else {
+          otherCount += 1;
+        }
+      });
+    });
+    if (modelGlassCount > 0 && !box.isEmpty()) {
+      glassModels.push({
+        box,
+        transmission: transmissionSum / modelGlassCount,
+        opacity: opacitySum / modelGlassCount,
+        thickness: thicknessSum / modelGlassCount,
+        roughness: roughnessSum / modelGlassCount
+      });
+      if (!hasUnion) {
+        union.copy(box);
+        hasUnion = true;
+      } else {
+        union.union(box);
+      }
+    }
+  }
+  let nextOpacity = 0.3;
+  if (glassCount > 0) {
+    const glassShadowOpacity = THREE.MathUtils.clamp((glassAccum / glassCount) * 0.42, 0.035, 0.12);
+    const glassMix = glassCount / Math.max(glassCount + otherCount, 1);
+    nextOpacity = otherCount > 0
+      ? THREE.MathUtils.lerp(0.3, glassShadowOpacity, glassMix)
+      : glassShadowOpacity;
+  }
+  if (Math.abs(shadowFloorMaterial.opacity - nextOpacity) > 1e-3) {
+    shadowFloorMaterial.opacity = nextOpacity;
+    renderer.shadowMap.needsUpdate = true;
+  }
+  glassShadowOverlay.visible = false;
+}
+
+function updatePointLightPosition(){
+  const { center, maxDim } = getVisibleSceneLightInfo();
+  let front = dirLight.position.clone().sub(center);
+  if (front.lengthSq() < 1e-6) front.set(1, 0.18, 1);
+  front.normalize();
+  const worldUp = new THREE.Vector3(0, 1, 0);
+  let right = new THREE.Vector3().crossVectors(worldUp, front);
+  if (right.lengthSq() < 1e-6) right = new THREE.Vector3(1, 0, 0);
+  right.normalize();
+  const up = new THREE.Vector3().crossVectors(front, right).normalize();
+  const anchor = center.clone()
+    .add(front.clone().multiplyScalar(Math.max(maxDim * 0.68, 1.18)))
+    .add(up.clone().multiplyScalar(Math.max(maxDim * 0.24, 0.34)));
+  const spreadX = Math.max(maxDim * 0.06, 0.11);
+  const spreadY = Math.max(maxDim * 0.05, 0.08);
+  const spreadZ = Math.max(maxDim * 0.04, 0.07);
+  const cols = [-2, -1, 0, 1, 2];
+  const rows = [0, 1, 2];
+  const layers = [0, 1];
+  const offsets = [];
+  const weights = [];
+  for (const layer of layers) {
+    for (const row of rows) {
+      for (const col of cols) {
+        offsets.push({
+          x: col * spreadX,
+          y: row * spreadY,
+          z: layer * spreadZ
+        });
+        const distScore = Math.abs(col) * 0.16 + row * 0.12 + layer * 0.1;
+        weights.push(Math.max(0.32, 1.0 - distScore));
+      }
+    }
+  }
+  pointLights.forEach((light, i) => {
+    const off = offsets[i] || offsets[0] || { x:0, y:0, z:0 };
+    const weight = weights[i] || weights[0] || 0.5;
+    const pos = anchor.clone()
+      .add(right.clone().multiplyScalar(off.x))
+      .add(up.clone().multiplyScalar(off.y))
+      .add(front.clone().multiplyScalar(off.z));
+    light.position.copy(pos);
+    light.distance = Math.max(maxDim * 1.6, 2.4);
+    light.decay = 2.6;
+    light.intensity = state.pointLightOn ? state.pointLightIntensity * 1.55 * weight : 0;
+    light.visible = state.pointLightOn;
+  });
+}
+function syncPointLightIntensity(v){
+  const next = THREE.MathUtils.clamp(Number(v) || 0, 0, 5);
+  state.pointLightIntensity = next;
+  qs('#pointLightIntensity').value = qs('#pointLightIntensityNum').value = fmt(next);
+  if (state.pointLightOn) updatePointLightPosition();
+}
+function syncPointLightButton(){
+  const btn = qs('#pointLightToggle');
+  btn.classList.toggle('active', state.pointLightOn);
+  btn.textContent = state.pointLightOn ? '포인트 끄기' : '포인트 켜기';
+}
+function setPointLightEnabled(on, showToast = true){
+  state.pointLightOn = !!on;
+  updatePointLightPosition();
+  applyPointLightMaterialBoost(state.pointLightOn);
+  syncPointLightButton();
+  if (showToast) toast(state.pointLightOn ? '포인트 켬' : '포인트 끔');
+}
+qs('#pointLightToggle').onclick = () => setPointLightEnabled(!state.pointLightOn, true);
+qs('#pointLightIntensity').addEventListener('input', e => syncPointLightIntensity(parseFloat(e.target.value)));
+qs('#pointLightIntensityNum').addEventListener('input', e => syncPointLightIntensity(parseFloat(e.target.value)));
+function syncRimLightIntensity(v){
+  const next = THREE.MathUtils.clamp(Number(v) || 0, 0, 2);
+  state.rimLightIntensity = next;
+  rimLight.intensity = state.rimLightOn ? next : 0;
+  qs('#rimLightIntensity').value = qs('#rimLightIntensityNum').value = fmt(next);
+}
+function syncRimLightButton(){
+  const btn = qs('#rimLightToggle');
+  btn.classList.toggle('active', state.rimLightOn);
+  btn.textContent = state.rimLightOn ? '반사광 끄기' : '반사광 켜기';
+}
+function setRimLightEnabled(on, showToast = true){
+  state.rimLightOn = !!on;
+  rimLight.intensity = state.rimLightOn ? state.rimLightIntensity : 0;
+  syncRimLightButton();
+  if (showToast) toast(state.rimLightOn ? '반사광 켬' : '반사광 끔');
+}
+qs('#rimLightToggle').onclick = () => setRimLightEnabled(!state.rimLightOn, true);
+qs('#rimLightIntensity').addEventListener('input', e => syncRimLightIntensity(parseFloat(e.target.value)));
+qs('#rimLightIntensityNum').addEventListener('input', e => syncRimLightIntensity(parseFloat(e.target.value)));
+function modelNeedsReflectionCapture(model){
+  let needed = false;
+  model?.object?.traverse(obj => {
+    if (needed || !obj.isMesh || !obj.material) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    needed = mats.some(mat => {
+      const profile = mat?.userData?.originalResponseProfile || getOriginalMaterialResponseProfile(mat);
+      const forced = mat?.userData?.forcedSurfaceKind;
+      const glassLike = forced === 'glass' || mat?.userData?.surfaceKind === 'glass' || hasGlassEvidence(mat);
+      return (forced === 'metal') || (!glassLike && profile.shouldUseDynamicCapture);
+    });
+  });
+  return needed;
+}
+
+function ensureModelReflectionResources(model){
+  if (model.reflectionRenderTarget && model.reflectionCubeCamera) return;
+  model.reflectionRenderTarget = new THREE.WebGLCubeRenderTarget(128, {
+    type: THREE.HalfFloatType,
+    generateMipmaps: true,
+    minFilter: THREE.LinearMipmapLinearFilter
+  });
+  model.reflectionCubeCamera = new THREE.CubeCamera(0.1, 120, model.reflectionRenderTarget);
+  scene.add(model.reflectionCubeCamera);
+}
+
+function applyModelReflectionTexture(model, texture){
+  if (!model?.object) return;
+  model.object.traverse(obj => {
+    if (!obj.isMesh || !obj.material) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach(mat => {
+      if (!mat) return;
+      const profile = mat?.userData?.originalResponseProfile || getOriginalMaterialResponseProfile(mat);
+      const forced = mat?.userData?.forcedSurfaceKind;
+      const glassLike = forced === 'glass' || mat?.userData?.surfaceKind === 'glass' || hasGlassEvidence(mat);
+      const shouldReflect = forced === 'metal' || (!glassLike && profile.shouldUseDynamicCapture);
+      mat.userData = mat.userData || {};
+      if (!shouldReflect) {
+        delete mat.userData.reflectionTexture;
+        if (forced) {
+          applyReflectiveMaterialProfile(mat);
+        } else {
+          prepareNativeMaterial(mat, obj.name);
+        }
+        mat.needsUpdate = true;
+        return;
+      }
+      mat.userData.reflectionTexture = texture;
+      if (forced) {
+        applyReflectiveMaterialProfile(mat);
+      } else {
+        prepareNativeMaterial(mat, obj.name);
+      }
+      mat.needsUpdate = true;
+    });
+  });
+}
+
+function needsReflectionCapture(){
+  return state.models.some(model => model.visible && modelNeedsReflectionCapture(model));
+}
+
+function projectPointToNdc(point, cam){
+  const projected = point.clone().project(cam);
+  if (![projected.x, projected.y, projected.z].every(Number.isFinite)) return null;
+  return projected;
+}
+
+function getModelProjectionInfo(model){
+  if (!model?.object?.visible) return null;
+  const box = new THREE.Box3().setFromObject(model.object);
+  if (box.isEmpty()) return null;
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const forward = camera.getWorldDirection(new THREE.Vector3());
+  const depth = center.clone().sub(camera.position).dot(forward);
+  const corners = [];
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let anyProjected = false;
+  for (const corner of corners) {
+    const p = projectPointToNdc(corner, camera);
+    if (!p) continue;
+    anyProjected = true;
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  const rect = anyProjected ? { minX, minY, maxX, maxY } : null;
+  return {
+    model,
+    box,
+    center,
+    size,
+    radius: Math.max(size.x, size.y, size.z) * 0.5,
+    depth,
+    rect
+  };
+}
+
+function rectOverlapRatio(a, b){
+  if (!a || !b) return 0;
+  const ix = Math.max(0, Math.min(a.maxX, b.maxX) - Math.max(a.minX, b.minX));
+  const iy = Math.max(0, Math.min(a.maxY, b.maxY) - Math.max(a.minY, b.minY));
+  if (ix <= 0 || iy <= 0) return 0;
+  const inter = ix * iy;
+  const areaA = Math.max(0.0001, (a.maxX - a.minX) * (a.maxY - a.minY));
+  const areaB = Math.max(0.0001, (b.maxX - b.minX) * (b.maxY - b.minY));
+  return inter / Math.min(areaA, areaB);
+}
+
+function pickFrontReflectionOccluder(targetModel, infos){
+  const targetInfo = infos.find(info => info?.model === targetModel);
+  if (!targetInfo) return null;
+  const depthGap = Math.max(targetInfo.radius * 0.06, 0.02);
+  let best = null;
+  for (const info of infos) {
+    if (!info || info.model === targetModel) continue;
+    if (info.depth >= targetInfo.depth - depthGap) continue;
+    const overlap = rectOverlapRatio(targetInfo.rect, info.rect);
+    if (overlap < 0.08) continue;
+    if (!best || info.depth > best.depth) best = { model: info.model, depth: info.depth, overlap };
+  }
+  return best?.model || null;
+}
+
+function updateReflectionCapture(){
+  const visibleModels = state.models.filter(m => m.visible);
+  const reflectiveModels = visibleModels.filter(modelNeedsReflectionCapture);
+  if (!reflectiveModels.length) return;
+  const projectionInfos = visibleModels.map(getModelProjectionInfo).filter(Boolean);
+  const prevGuides = selectionGuides.visible;
+  const prevX = rotateHandleX.visible;
+  const prevY = rotateHandleY.visible;
+  const prevZ = rotateHandleZ.visible;
+  const prevGX = moveGuideX.visible;
+  const prevGY = moveGuideY.visible;
+  const prevGZ = moveGuideZ.visible;
+  const prevClearColor = renderer.getClearColor(new THREE.Color()).clone();
+  const prevClearAlpha = renderer.getClearAlpha();
+  const prevGroundVisible = ground.visible;
+  const prevGridVisible = grid.visible;
+  const prevShadowVisible = shadowCatcher.visible;
+  const prevReflectionFloorVisible = reflectionFloor.visible;
+  selectionGuides.visible = false;
+  rotateHandleX.visible = false;
+  rotateHandleY.visible = false;
+  rotateHandleZ.visible = false;
+  moveGuideX.visible = false;
+  moveGuideY.visible = false;
+  moveGuideZ.visible = false;
+  if (state.theme === 'light') renderer.setClearColor(0x0b0d12, 1);
+  if (state.floorMode !== 'white') {
+    ground.visible = false;
+    grid.visible = false;
+    shadowCatcher.visible = false;
+    reflectionFloor.visible = true;
+  }
+  try {
+    for (const model of reflectiveModels) {
+      const info = projectionInfos.find(item => item.model === model);
+      if (!info) continue;
+      ensureModelReflectionResources(model);
+      const frontOccluder = pickFrontReflectionOccluder(model, projectionInfos);
+      const visibilityRestore = visibleModels.map(item => ({ model:item, visible:item.object.visible }));
+      for (const item of visibleModels) {
+        if (item === model) item.object.visible = false;
+        else if (frontOccluder) item.object.visible = item === frontOccluder;
+        else item.object.visible = false;
+      }
+      model.reflectionCubeCamera.position.copy(info.center);
+      model.reflectionCubeCamera.update(renderer, scene);
+      visibilityRestore.forEach(entry => { entry.model.object.visible = entry.visible; });
+      applyModelReflectionTexture(model, model.reflectionRenderTarget.texture);
+    }
+  } finally {
+    ground.visible = prevGroundVisible;
+    grid.visible = prevGridVisible;
+    shadowCatcher.visible = prevShadowVisible;
+    reflectionFloor.visible = prevReflectionFloorVisible;
+    renderer.setClearColor(prevClearColor, prevClearAlpha);
+    selectionGuides.visible = prevGuides;
+    rotateHandleX.visible = prevX;
+    rotateHandleY.visible = prevY;
+    rotateHandleZ.visible = prevZ;
+    moveGuideX.visible = prevGX;
+    moveGuideY.visible = prevGY;
+    moveGuideZ.visible = prevGZ;
+  }
+}
+function syncLightAngle(v){
+  const angle = ((Number(v) % 360) + 360) % 360;
+  updateLightFromOrbit(angle, state.lightHeight, state.lightRadius);
+  qs('#lightAngleRange').value = qs('#lightAngleNum').value = fmt(angle);
+}
+function syncLightHeight(v){
+  const next = Number(v);
+  updateLightFromOrbit(state.lightAngle, next, state.lightRadius);
+  qs('#lightHeightRange').value = qs('#lightHeightNum').value = fmt(next);
+}
+function syncIntensity(v){ dirLight.intensity = Number(v); qs('#lightIntensity').value = qs('#lightIntensityNum').value = fmt(v); }
+qs('#lightAngleRange').addEventListener('input', e => syncLightAngle(parseFloat(e.target.value)));
+qs('#lightAngleNum').addEventListener('input', e => syncLightAngle(parseFloat(e.target.value)));
+qs('#lightHeightRange').addEventListener('input', e => syncLightHeight(parseFloat(e.target.value)));
+qs('#lightHeightNum').addEventListener('input', e => syncLightHeight(parseFloat(e.target.value)));
+qs('#lightIntensity').addEventListener('input', e => syncIntensity(parseFloat(e.target.value)));
+qs('#lightIntensityNum').addEventListener('input', e => syncIntensity(parseFloat(e.target.value)));
+qs('#resetLight').onclick = () => { syncLightAngle(state.lightAngle); syncLightHeight(state.lightHeight); syncIntensity(DEFAULT_LIGHT.intensity); toast('조명 초기화'); };
+
+qs('#projBtn').onclick = () => {
+  if (state.viewMode === '2d') return;
+  setProjectionMode(state.projection === 'perspective' ? 'orthographic' : 'perspective', { showToast:true });
+};
+
+function isFullscreen(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+async function toggleFullscreen(){
+  try {
+    if (!isFullscreen()) {
+      const el = document.documentElement;
+      if (el.requestFullscreen) await el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else throw new Error('fullscreen-unsupported');
+    } else {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      else throw new Error('fullscreen-unsupported');
+    }
+  } catch (err) {
+    console.error(err);
+    toast('전체화면을 지원하지 않는 브라우저입니다');
+  }
+}
+
+function syncFullscreenButton(){
+  qs('#fsBtn').classList.toggle('active', isFullscreen());
+}
+
+qs('#fsBtn').onclick = toggleFullscreen;
+document.addEventListener('fullscreenchange', () => { syncFullscreenButton(); armViewportSwitch(900); scheduleStableViewportResize({ attempts:20, stableFrames:2 }); });
+document.addEventListener('webkitfullscreenchange', () => { syncFullscreenButton(); armViewportSwitch(900); scheduleStableViewportResize({ attempts:20, stableFrames:2 }); });
+
+
+async function captureScene(){
+  const panel = qs('#panel');
+  const topbar = qs('#topbar');
+  const toasts = qs('#toasts');
+  const loading = qs('#loading');
+  const empty = qs('#empty');
+  const layoutHud = qs('#layoutHud');
+  const modeToast = qs('#modeToast');
+  const prev = {
+    panel: panel.style.display,
+    topbar: topbar.style.display,
+    toasts: toasts.style.display,
+    loading: loading.style.display,
+    empty: empty.style.display,
+    badge: qs('#dragBadge').style.display,
+    layoutHud: layoutHud.style.display,
+    modeToast: modeToast.style.display
+  };
+  panel.style.display = 'none';
+  topbar.style.display = 'none';
+  toasts.style.display = 'none';
+  loading.style.display = 'none';
+  empty.style.display = 'none';
+  layoutHud.style.display = 'none';
+  modeToast.style.display = 'none';
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  try {
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+    link.href = renderer.domElement.toDataURL('image/png');
+    link.download = `btob-art-scene-${stamp}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    toast('장면 캡처 완료');
+  } catch (err) {
+    console.error(err);
+    toast('장면 캡처 실패');
+  } finally {
+    panel.style.display = prev.panel;
+    topbar.style.display = prev.topbar;
+    toasts.style.display = prev.toasts;
+    loading.style.display = prev.loading;
+    empty.style.display = prev.empty;
+    layoutHud.style.display = prev.layoutHud;
+    modeToast.style.display = prev.modeToast;
+    qs('#dragBadge').style.display = prev.badge;
+  }
+}
+qs('#captureBtn').onclick = captureScene;
+qs('#quickSaveBtn').onclick = () => { if (state.uiLocked) return; qs('#downloadPresetBtn').click(); };
+qs('#quickLoadBtn').onclick = () => { if (state.uiLocked) return; qs('#loadPresetFileBtn').click(); };
+qs('#panelBtn').onclick = () => qs('#panel').classList.toggle('collapsed');
+qs('#handle').onclick = () => qs('#panel').classList.toggle('collapsed');
+qsa('.tab').forEach(tab => tab.onclick = () => { qsa('.tab').forEach(t => t.classList.toggle('active', t === tab)); qsa('.pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + tab.dataset.tab)); });
+
+const panelDragState = { active:false, pointerId:null, startX:0, currentX:0 };
+function beginPanelDrag(e){
+  const panel = qs('#panel');
+  if (panel.classList.contains('collapsed')) return;
+  panelDragState.active = true;
+  panelDragState.pointerId = e.pointerId;
+  panelDragState.startX = e.clientX;
+  panelDragState.currentX = e.clientX;
+  panel.style.transition = 'none';
+  document.body.style.userSelect = 'none';
+  try { qs('#panel').setPointerCapture?.(e.pointerId); } catch (_) {}
+}
+function movePanelDrag(e){
+  if (!panelDragState.active || panelDragState.pointerId !== e.pointerId) return;
+  const panel = qs('#panel');
+  panelDragState.currentX = e.clientX;
+  const dx = Math.max(0, e.clientX - panelDragState.startX);
+  panel.style.transform = `translateX(${dx}px)`;
+}
+function endPanelDrag(e){
+  if (!panelDragState.active || (e.pointerId != null && panelDragState.pointerId !== e.pointerId)) return;
+  const panel = qs('#panel');
+  const currentX = e.clientX != null ? e.clientX : panelDragState.currentX;
+  const dx = Math.max(0, currentX - panelDragState.startX);
+  panelDragState.active = false;
+  panelDragState.pointerId = null;
+  panel.style.transition = 'transform .28s ease';
+  panel.style.transform = '';
+  document.body.style.userSelect = '';
+  if (dx > Math.max(72, panel.clientWidth * 0.18)) panel.classList.add('collapsed');
+}
+[qs('#handle')].filter(Boolean).forEach(el => {
+  el.addEventListener('pointerdown', beginPanelDrag);
+});
+window.addEventListener('pointermove', movePanelDrag, { passive:true });
+window.addEventListener('pointerup', endPanelDrag, { passive:true });
+window.addEventListener('pointercancel', endPanelDrag, { passive:true });
+
+qs('#modeToggleBtn').onclick = () => setViewMode(state.viewMode === '3d' ? '2d' : '3d', { showBanner:true });
+qs('#layoutMoveBtn').onclick = () => getModel() ? setDragMode('screen') : toast('먼저 소재를 선택하세요');
+qs('#layoutRotateBtn').onclick = () => getModel() ? setDragMode('rotate') : toast('먼저 소재를 선택하세요');
+qs('#layoutOffBtn').onclick = () => setDragMode('off');
+qs('#depthFrontBtn').onclick = () => moveSelectedDepth('front');
+qs('#depthBackBtn').onclick = () => moveSelectedDepth('back');
+qs('#rotateViewCCWBtn').onclick = () => rotate2DView(-5);
+qs('#rotateViewCWBtn').onclick = () => rotate2DView(5);
+
+qs('#addBtn').onclick = () => {
+  if (state.uiLocked) return;
+  qs('#fileInput').click();
+};
+qs('#fileInput').addEventListener('change', async (e) => {
+  const files = [...(e.target.files || [])];
+  try {
+    await loadLocalFilesBatch(files, { title:'소재 불러오는 중...' });
+  } catch (err) {
+    console.error(err);
+    toast(err.message || '소재 추가 실패');
+  }
+  e.target.value = '';
+});
+['dragenter','dragover','dragleave','drop'].forEach(type => window.addEventListener(type, e => { e.preventDefault(); e.stopPropagation(); }, false));
+window.addEventListener('drop', async (e) => {
+  if (state.uiLocked) return;
+  const files = [...(e.dataTransfer?.files || [])];
+  try {
+    await loadLocalFilesBatch(files, { title:'소재 불러오는 중...' });
+  } catch (err) {
+    console.error(err);
+    toast(err.message || '소재 추가 실패');
+  }
+});
+
+
+function getLightState(){
+  return { angle: state.lightAngle, height: state.lightHeight, radius: state.lightRadius, x: dirLight.position.x, y: dirLight.position.y, z: dirLight.position.z, intensity: dirLight.intensity, pointLightOn: state.pointLightOn, rimLightOn: state.rimLightOn, pointLightIntensity: state.pointLightIntensity, rimLightIntensity: state.rimLightIntensity };
+}
+
+function sanitizePresetName(name){
+  const base = String(name || 'scene-preset').trim().replace(/\s+/g,'-').replace(/[^\w\-가-힣]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+  return base || 'scene-preset';
+}
+
+function serializePreset({ shareableOnly=true } = {}){
+  const skippedLocal = state.models.filter(m => m.source?.type !== 'url').length;
+  const models = state.models
+    .filter(m => !shareableOnly || m.source?.type === 'url')
+    .map(m => ({
+      name: m.name,
+      ext: m.ext,
+      url: m.source?.url || '',
+      visible: m.visible,
+      materialMode: m.materialMode || 'default',
+      defaultMaterialMode: m.defaultMaterialMode || 'default',
+      materialSettings: JSON.parse(JSON.stringify(normalizeMaterialSettings(m.materialSettings || defaultMaterialSettings()))),
+      defaultMaterialSettings: JSON.parse(JSON.stringify(normalizeMaterialSettings(m.defaultMaterialSettings || defaultMaterialSettings()))),
+      transform: JSON.parse(JSON.stringify(m.transform))
+    }))
+    .filter(m => !!m.url);
+  return {
+    version: 1,
+    app: 'btob-art-viewer',
+    savedAt: new Date().toISOString(),
+    theme: state.theme,
+    projection: state.projection,
+    viewMode: state.viewMode,
+    floorMode: state.floorMode,
+    showGrid: state.showGrid,
+    light: getLightState(),
+    cameraView: getViewSnapshot(),
+    models,
+    meta: { skippedLocalModels: skippedLocal }
+  };
+}
+
+function encodePresetData(data){
+  const json = JSON.stringify(data);
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+function decodePresetData(encoded){
+  const base = String(encoded).replace(/-/g,'+').replace(/_/g,'/');
+  const padded = base + '='.repeat((4 - base.length % 4) % 4);
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function downloadTextFile(filename, text, type='application/json;charset=utf-8'){
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+}
+
+
+function downloadBlobFile(filename, blob){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function sanitizeBundleFileName(name, fallback='model'){
+  const clean = String(name || fallback).trim().replace(/\s+/g, '-').replace(/[^\w.\-가-힣]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return clean || fallback;
+}
+
+function inferModelFileName(model, fallbackIndex=1){
+  const sourceName = model?.source?.fileName || model?.name || `model-${fallbackIndex}.${String(model?.ext || 'glb').toLowerCase()}`;
+  const clean = sanitizeBundleFileName(sourceName, `model-${fallbackIndex}`);
+  if (/\.[A-Za-z0-9]+$/.test(clean)) return clean;
+  const ext = String(model?.ext || 'glb').toLowerCase();
+  return `${clean}.${ext}`;
+}
+
+function buildSceneBundleManifest(){
+  return {
+    version: 1,
+    format: 'btob-scene-bundle',
+    app: 'btob-art-viewer',
+    savedAt: new Date().toISOString(),
+    theme: state.theme,
+    projection: state.projection,
+    viewMode: state.viewMode,
+    floorMode: state.floorMode,
+    showGrid: state.showGrid,
+    light: getLightState(),
+    cameraView: getViewSnapshot(),
+    models: []
+  };
+}
+
+async function resolveModelSourceBlob(model){
+  if (model?.source?.file instanceof Blob) return model.source.file;
+  const sourceUrl = model?.source?.url;
+  if (sourceUrl) {
+    const resolved = new URL(String(sourceUrl).trim(), location.href).href;
+    const res = await fetch(resolved, { cache:'no-store' });
+    if (!res.ok) throw new Error(`${model.name} 소재를 내려받지 못했습니다 (${res.status})`);
+    return await res.blob();
+  }
+  throw new Error(`${model?.name || '모델'}의 원본 소재 파일을 찾지 못했습니다`);
+}
+
+async function createSceneBundleBlob(){
+  const manifest = buildSceneBundleManifest();
+  const zip = new JSZip();
+  const assetMap = new Map();
+  const usedPaths = new Set();
+  for (let i = 0; i < state.models.length; i += 1) {
+    const model = state.models[i];
+    const assetKey = model?.source?.assetKey || `${model?.source?.type || 'model'}:${model?.name || i}`;
+    let asset = assetMap.get(assetKey);
+    if (!asset) {
+      const blob = await resolveModelSourceBlob(model);
+      let filename = inferModelFileName(model, i + 1);
+      let path = `models/${filename}`;
+      let counter = 2;
+      while (usedPaths.has(path)) {
+        const parts = filename.split('.');
+        const ext = parts.length > 1 ? `.${parts.pop()}` : '';
+        const stem = parts.join('.') || 'model';
+        filename = `${stem}_${counter}${ext}`;
+        path = `models/${filename}`;
+        counter += 1;
+      }
+      usedPaths.add(path);
+      zip.file(path, blob);
+      asset = { bundlePath: path, fileName: filename };
+      assetMap.set(assetKey, asset);
+    }
+    manifest.models.push({
+      name: model.name,
+      ext: model.ext,
+      visible: model.visible,
+      materialMode: model.materialMode || 'default',
+      defaultMaterialMode: model.defaultMaterialMode || 'default',
+      materialSettings: JSON.parse(JSON.stringify(normalizeMaterialSettings(model.materialSettings || defaultMaterialSettings()))),
+      defaultMaterialSettings: JSON.parse(JSON.stringify(normalizeMaterialSettings(model.defaultMaterialSettings || defaultMaterialSettings()))),
+      transform: JSON.parse(JSON.stringify(normalizeTransform(model.transform))),
+      bundlePath: asset.bundlePath,
+      fileName: asset.fileName
+    });
+  }
+  zip.file('scene.json', JSON.stringify(manifest, null, 2));
+  return await zip.generateAsync({ type:'blob' });
+}
+
+function guessMimeTypeFromName(name=''){
+  const lower = String(name).toLowerCase();
+  if (lower.endsWith('.glb')) return 'model/gltf-binary';
+  if (lower.endsWith('.gltf')) return 'model/gltf+json';
+  if (lower.endsWith('.obj')) return 'text/plain';
+  if (lower.endsWith('.stl')) return 'model/stl';
+  if (lower.endsWith('.fbx')) return 'application/octet-stream';
+  return 'application/octet-stream';
+}
+
+function isSceneBundleManifest(data){
+  return !!(data && Array.isArray(data.models) && (data.format === 'btob-scene-bundle' || data.models.some(item => item?.bundlePath)));
+}
+
+function applySceneViewState(data){
+  state.theme = data?.theme === 'dark' ? 'dark' : 'light';
+  applyTheme();
+  qs('#themeBtn').classList.toggle('active', state.theme === 'light');
+  const nextFloorMode = ['white','grid','none'].includes(data?.floorMode)
+    ? data.floorMode
+    : (typeof data?.showGrid === 'boolean' ? (data.showGrid ? 'grid' : 'none') : 'white');
+  setFloorMode(nextFloorMode, false);
+  const light = data?.light || {};
+  const nextAngle = Number.isFinite(light.angle)
+    ? light.angle
+    : ((Number.isFinite(light.x) || Number.isFinite(light.z))
+        ? ((THREE.MathUtils.radToDeg(Math.atan2(light.z || 0, light.x || DEFAULT_LIGHT.radius)) % 360) + 360) % 360
+        : DEFAULT_LIGHT.angle);
+  const nextHeight = Number.isFinite(light.height) ? light.height : (Number.isFinite(light.y) ? (light.y - (data?.lightTargetY ?? 0)) : DEFAULT_LIGHT.height);
+  state.lightRadius = Number.isFinite(light.radius) ? Number(light.radius) : DEFAULT_LIGHT.radius;
+  syncLightAngle(nextAngle);
+  syncLightHeight(nextHeight);
+  syncIntensity(Number.isFinite(light.intensity) ? light.intensity : DEFAULT_LIGHT.intensity);
+  syncPointLightIntensity(Number.isFinite(light.pointLightIntensity) ? light.pointLightIntensity : state.pointLightIntensity);
+  syncRimLightIntensity(Number.isFinite(light.rimLightIntensity) ? light.rimLightIntensity : state.rimLightIntensity);
+  setPointLightEnabled(!!light.pointLightOn, false);
+  setRimLightEnabled(light.rimLightOn !== false, false);
+  const desiredProjection = data?.projection === 'orthographic' ? 'orthographic' : 'perspective';
+  if (desiredProjection !== state.projection) setProjectionMode(desiredProjection, { showToast:false });
+}
+
+async function runTasksWithConcurrency(items, limit, worker, { onAfterEach=null } = {}){
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  async function runner(){
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      if (currentIndex >= items.length) return;
+      results[currentIndex] = await worker(items[currentIndex], currentIndex);
+      if (onAfterEach) await onAfterEach(results[currentIndex], currentIndex, items.length);
+    }
+  }
+  const runnerCount = Math.max(1, Math.min(limit || 1, items.length || 1));
+  await Promise.all(Array.from({ length: runnerCount }, () => runner()));
+  return results;
+}
+
+async function loadModelsWithProgress(items, worker, { title='장면 불러오는 중...', concurrency=2, label='소재 추가 중' } = {}){
+  const total = items.length;
+  if (!total) return [];
+  setLoadStep(1, total, label, title);
+  let completed = 0;
+  return await runTasksWithConcurrency(items, concurrency, worker, {
+    onAfterEach: async () => {
+      completed += 1;
+      if (completed < total) setLoadStep(completed + 1, total, label, title);
+      else setLoadingStatus(title, '장면 정리 중...');
+    }
+  });
+}
+
+function waitForNextFrame(){
+  return new Promise(resolve => requestAnimationFrame(() => resolve()));
+}
+
+function scheduleDeferredMaterialRefresh(models){
+  const targets = (models || []).filter(model => model?.object);
+  if (!targets.length) return;
+  const ticket = ++state.deferredMaterialRefreshTicket;
+  setTimeout(async () => {
+    if (ticket !== state.deferredMaterialRefreshTicket) return;
+    const prevSuspendReflections = state.suspendReflections;
+    const prevDeferTextureStats = state.deferTextureStats;
+    state.suspendReflections = true;
+    state.deferTextureStats = false;
+    try {
+      for (let i = 0; i < targets.length; i += 1) {
+        if (ticket !== state.deferredMaterialRefreshTicket) return;
+        await waitForNextFrame();
+        refreshModelMaterialMode(targets[i]);
+      }
+      renderList();
+      updateTextureUI();
+      refreshSelectedMaterialSliders();
+      renderer.shadowMap.needsUpdate = true;
+    } catch (error) {
+      console.warn('Deferred material refresh skipped:', error);
+    } finally {
+      state.suspendReflections = prevSuspendReflections;
+      state.deferTextureStats = prevDeferTextureStats;
+    }
+  }, 180);
+}
+
+function restoreSavedSceneView(cameraView, viewMode='3d'){
+  if (!cameraView) return false;
+  restoreViewSnapshot(cameraView);
+  if (viewMode === '2d') {
+    state.viewMode = '2d';
+    const target = controls.target.clone();
+    state.layout2d = {
+      target,
+      distanceVec: perspectiveCam.position.clone().sub(target),
+      rollDeg: Number(cameraView.sceneRollDeg || 0)
+    };
+    applyModeUi();
+    syncControlMode();
+    apply2DViewCamera({ refreshLight:true });
+  } else {
+    state.viewMode = '3d';
+    state.layout2d = null;
+    applyModeUi();
+    syncControlMode();
+    updateLightFromOrbit(state.lightAngle, state.lightHeight, state.lightRadius);
+  }
+  saveHomeView();
+  return true;
+}
+
+function finalizeImportedModels(orderedModels, { toastMessage='', fitView=true, preferredSelectionId=null, resetDragMode=true, deferMaterialRefresh=false, restoreCameraView=null, restoreViewMode='3d' } = {}){
+  renderList();
+  let preferred = preferredSelectionId ? state.models.find(m => m.id === preferredSelectionId) : null;
+  if (state.models.length) {
+    const first = preferred || orderedModels.find(m => m?.visible) || orderedModels.find(Boolean) || state.models.find(m => m.visible) || state.models[0];
+    if (first) selectModel(first.id, false);
+    if (fitView) fitScene();
+    else if (restoreCameraView) restoreSavedSceneView(restoreCameraView, restoreViewMode);
+  } else {
+    clearSelection();
+  }
+  if (resetDragMode) setDragMode('off');
+  updateTextureUI();
+  refreshSelectedMaterialSliders();
+  if (deferMaterialRefresh) scheduleDeferredMaterialRefresh(orderedModels);
+  if (toastMessage) toast(toastMessage);
+}
+
+function getSceneManifestModelUrl(item, sceneUrl){
+  const candidate = item?.url || item?.bundlePath || item?.fileName;
+  if (!candidate) return '';
+  return new URL(String(candidate).trim(), sceneUrl).href;
+}
+
+async function readSceneBundleBlob(blob){
+  const zip = await JSZip.loadAsync(blob);
+  const sceneEntry = zip.file('scene.json');
+  if (!sceneEntry) throw new Error('장면 ZIP 안에 scene.json이 없습니다');
+  const bundle = JSON.parse(await sceneEntry.async('string'));
+  return { zip, bundle };
+}
+
+async function applySceneBundle(bundle, zip, { clearExisting=true, toastMessage='장면 ZIP 로드 완료', title='장면 ZIP 불러오는 중...' } = {}){
+  if (!bundle || !Array.isArray(bundle.models)) throw new Error('올바른 장면 ZIP 형식이 아닙니다');
+  if (clearExisting) clearAllModels();
+  applySceneViewState(bundle);
+  const savedCameraView = bundle?.cameraView || bundle?.viewSnapshot || null;
+  const savedViewMode = bundle?.viewMode === '2d' ? '2d' : '3d';
+  const items = bundle.models.filter(item => !!item?.bundlePath);
+  const orderedModels = await loadModelsWithProgress(items, async (item) => {
+    const entry = zip.file(item.bundlePath);
+    if (!entry) throw new Error(`장면 ZIP 안에서 ${item.bundlePath} 파일을 찾지 못했습니다`);
+    const blob = await entry.async('blob');
+    const fileName = item.fileName || item.name || item.bundlePath.split('/').pop() || 'model.glb';
+    const file = new File([blob], fileName, { type: blob.type || guessMimeTypeFromName(fileName) });
+    const objectUrl = URL.createObjectURL(file);
+    return await loadModelAsset({
+      name: item.name || fileName,
+      url: objectUrl,
+      sourceType: 'bundle',
+      sourceFile: file,
+      sourceBundlePath: item.bundlePath,
+      sourceAssetKey: `bundle:${item.bundlePath}`,
+      revoke: true,
+      transform: normalizeTransform(item.transform),
+      materialMode: item.materialMode || item.defaultMaterialMode || 'original',
+      defaultMaterialMode: item.defaultMaterialMode || item.materialMode || 'original',
+      materialSettings: item.materialSettings || null,
+      defaultMaterialSettings: item.defaultMaterialSettings || item.materialSettings || null,
+      visible: item.visible !== false,
+      selectOnLoad: false,
+      fitOnLoad: false,
+      toastOnLoad: false,
+      deferUiRefresh: true,
+      skipLoadingOverlay: true,
+      skipInitialMaterialRefresh: true
+    });
+  }, { title, concurrency: 2, label: '소재 추가 중' });
+  finalizeImportedModels(orderedModels, { toastMessage, fitView: !savedCameraView, resetDragMode: true, deferMaterialRefresh: true, restoreCameraView: savedCameraView, restoreViewMode: savedViewMode });
+}
+
+async function applySceneBundleManifest(bundle, sceneUrl, { clearExisting=true, toastMessage='장면 폴더 로드 완료', title=BRAND_LOADING_TITLE } = {}){
+  if (!bundle || !Array.isArray(bundle.models)) throw new Error('올바른 장면 폴더 형식이 아닙니다');
+  if (clearExisting) clearAllModels();
+  applySceneViewState(bundle);
+  const savedCameraView = bundle?.cameraView || bundle?.viewSnapshot || null;
+  const savedViewMode = bundle?.viewMode === '2d' ? '2d' : '3d';
+  const items = bundle.models.filter(item => !!(item?.bundlePath || item?.url || item?.fileName));
+  const orderedModels = await loadModelsWithProgress(items, async (item) => {
+    const resolvedUrl = getSceneManifestModelUrl(item, sceneUrl);
+    if (!resolvedUrl) throw new Error('장면 폴더의 모델 경로가 비어 있습니다');
+    return await loadRemoteModel(resolvedUrl, {
+      name: item.name || item.fileName || modelNameFromUrl(resolvedUrl),
+      transform: normalizeTransform(item.transform),
+      materialMode: item.materialMode || item.defaultMaterialMode || 'original',
+      defaultMaterialMode: item.defaultMaterialMode || item.materialMode || 'original',
+      materialSettings: item.materialSettings || null,
+      defaultMaterialSettings: item.defaultMaterialSettings || item.materialSettings || null,
+      visible: item.visible !== false,
+      selectOnLoad: false,
+      fitOnLoad: false,
+      toastOnLoad: false,
+      deferUiRefresh: true,
+      skipLoadingOverlay: true,
+      sourceBundlePath: item.bundlePath || '',
+      skipInitialMaterialRefresh: true
+    });
+  }, { title, concurrency: 2, label: '소재 추가 중' });
+  finalizeImportedModels(orderedModels, { toastMessage, fitView: !savedCameraView, resetDragMode: true, deferMaterialRefresh: true, restoreCameraView: savedCameraView, restoreViewMode: savedViewMode });
+}
+
+async function applyPreset(preset, { clearExisting=true, toastMessage='프리셋 로드 완료', title='장면 데이터 불러오는 중...' } = {}){
+  if (!preset || !Array.isArray(preset.models)) throw new Error('올바른 프리셋 형식이 아닙니다');
+  if (clearExisting) clearAllModels();
+  applySceneViewState(preset);
+  const savedCameraView = preset?.cameraView || preset?.viewSnapshot || null;
+  const savedViewMode = preset?.viewMode === '2d' ? '2d' : '3d';
+  const items = preset.models.filter(item => !!item?.url);
+  const orderedModels = await loadModelsWithProgress(items, async (item) => {
+    return await loadRemoteModel(item.url, {
+      name: item.name || modelNameFromUrl(item.url),
+      transform: normalizeTransform(item.transform),
+      materialMode: item.materialMode || item.defaultMaterialMode || 'default',
+      defaultMaterialMode: item.defaultMaterialMode || item.materialMode || 'default',
+      materialSettings: item.materialSettings || null,
+      defaultMaterialSettings: item.defaultMaterialSettings || item.materialSettings || null,
+      visible: item.visible !== false,
+      selectOnLoad: false,
+      fitOnLoad: false,
+      toastOnLoad: false,
+      deferUiRefresh: true,
+      skipLoadingOverlay: true,
+      skipInitialMaterialRefresh: true
+    });
+  }, { title, concurrency: 2, label: '소재 추가 중' });
+  finalizeImportedModels(orderedModels, { toastMessage, fitView: !savedCameraView, resetDragMode: true, deferMaterialRefresh: true, restoreCameraView: savedCameraView, restoreViewMode: savedViewMode });
+}
+
+async function loadSceneBundleFromFile(file, options = {}){
+  return await withSceneLoadLock(async () => {
+    setLoadingStatus('장면 ZIP 불러오는 중...', '압축 해제 중...');
+    const { zip, bundle } = await readSceneBundleBlob(file);
+    setLoadingStatus('장면 ZIP 불러오는 중...', 'scene.json 분석 중...');
+    await applySceneBundle(bundle, zip, { title: '장면 ZIP 불러오는 중...', ...options });
+  }, { title: '장면 ZIP 불러오는 중...', detail: '압축 해제 중...' });
+}
+
+async function loadSceneBundleFromUrl(url, options = {}){
+  const resolved = new URL(String(url).trim(), location.href).href;
+  return await withSceneLoadLock(async () => {
+    setLoadingStatus('장면 ZIP 불러오는 중...', '번들 다운로드 중...');
+    const res = await fetch(resolved, { cache:'no-store' });
+    if (!res.ok) throw new Error(`장면 ZIP을 불러오지 못했습니다 (${res.status})`);
+    const blob = await res.blob();
+    setLoadingStatus('장면 ZIP 불러오는 중...', '압축 해제 중...');
+    const { zip, bundle } = await readSceneBundleBlob(blob);
+    setLoadingStatus('장면 ZIP 불러오는 중...', 'scene.json 분석 중...');
+    await applySceneBundle(bundle, zip, { title: '장면 ZIP 불러오는 중...', ...options });
+  }, { title: '장면 ZIP 불러오는 중...', detail: '번들 다운로드 중...' });
+}
+
+async function loadSceneDataFromUrl(url, options = {}){
+  const resolved = new URL(String(url).trim(), location.href).href;
+  return await withSceneLoadLock(async () => {
+    setLoadingStatus('장면 데이터 불러오는 중...', 'scene.json 다운로드 중...');
+    const res = await fetch(resolved, { cache:'no-store' });
+    if (!res.ok) throw new Error(`장면 데이터를 불러오지 못했습니다 (${res.status})`);
+    const data = await res.json();
+    setLoadingStatus('장면 데이터 불러오는 중...', 'scene.json 분석 중...');
+    if (isSceneBundleManifest(data)) {
+      setLoadingStatus(BRAND_LOADING_TITLE, 'scene.json 분석 중...');
+      await applySceneBundleManifest(data, resolved, { title: BRAND_LOADING_TITLE, toastMessage: options.toastMessage || '장면 폴더 자동 로드 완료', clearExisting: options.clearExisting });
+      return;
+    }
+    await applyPreset(data, { title: '장면 데이터 불러오는 중...', toastMessage: options.toastMessage || '프리셋 자동 로드 완료', clearExisting: options.clearExisting });
+  }, { title: '장면 데이터 불러오는 중...', detail: 'scene.json 다운로드 중...' });
+}
+
+async function loadLocalFilesBatch(files, { title='소재 불러오는 중...' } = {}){
+  const validFiles = [];
+  for (const file of files) {
+    const ext = getExt(file.name);
+    if (!['glb','gltf','obj','stl','fbx'].includes(ext)) {
+      toast(`지원하지 않는 형식: .${ext}`);
+      continue;
+    }
+    validFiles.push(file);
+  }
+  if (!validFiles.length) return [];
+  const hadModels = state.models.length > 0;
+  const selectedBefore = state.selectedId;
+  return await withSceneLoadLock(async () => {
+    const orderedModels = await loadModelsWithProgress(validFiles, async (file) => {
+      return await loadFile(file, {
+        fitOnLoad: false,
+        selectOnLoad: false,
+        toastOnLoad: false,
+        deferUiRefresh: true,
+        skipLoadingOverlay: true
+      });
+    }, { title, concurrency: 2, label: '소재 추가 중' });
+    finalizeImportedModels(orderedModels, {
+      toastMessage: `${orderedModels.filter(Boolean).length}개 소재 추가 완료`,
+      fitView: !hadModels,
+      preferredSelectionId: selectedBefore,
+      resetDragMode: false,
+      deferMaterialRefresh: true
+    });
+    return orderedModels;
+  }, { title, detail: `1/${validFiles.length} 소재 추가 중` });
+}
+
+async function bootScene(){
+  const url = new URL(location.href);
+  try {
+    const remoteBundle = url.searchParams.get('bundle') || url.searchParams.get('sceneBundle');
+    if (remoteBundle) {
+      await loadSceneBundleFromUrl(remoteBundle, { toastMessage:'장면 번들 자동 로드 완료' });
+      return;
+    }
+    if (url.searchParams.get('presetData')) {
+      const preset = decodePresetData(url.searchParams.get('presetData'));
+      await withSceneLoadLock(async () => {
+        setLoadingStatus('장면 데이터 불러오는 중...', '프리셋 분석 중...');
+        await applyPreset(preset, { title:'장면 데이터 불러오는 중...', toastMessage:'공유 장면 자동 로드 완료' });
+      }, { title:'장면 데이터 불러오는 중...', detail:'프리셋 분석 중...' });
+      return;
+    }
+    const remoteSceneData = url.searchParams.get('scene') || url.searchParams.get('scenePath') || url.searchParams.get('preset');
+    if (remoteSceneData) {
+      await loadSceneDataFromUrl(remoteSceneData, { toastMessage:'장면 데이터 자동 로드 완료' });
+      return;
+    }
+    const saved = localStorage.getItem('btob-default-preset');
+    if (saved) {
+      const preset = JSON.parse(saved);
+      await withSceneLoadLock(async () => {
+        setLoadingStatus('기기 시작 장면 불러오는 중...', '프리셋 분석 중...');
+        await applyPreset(preset, { title:'기기 시작 장면 불러오는 중...', toastMessage:'기기 시작 장면 로드 완료' });
+      }, { title:'기기 시작 장면 불러오는 중...', detail:'프리셋 분석 중...' });
+    }
+  } catch (err) {
+    console.error(err);
+    toast(err.message || '자동 장면 로드 실패');
+  }
+}
+
+let brandTapCount = 0;
+let brandTapTimer = null;
+qs('#brandTap').addEventListener('click', () => {
+  brandTapCount += 1;
+  clearTimeout(brandTapTimer);
+  brandTapTimer = setTimeout(() => { brandTapCount = 0; }, 1400);
+  if (brandTapCount >= 6) {
+    brandTapCount = 0;
+    qs('#presetPanel').classList.toggle('show');
+    toast(qs('#presetPanel').classList.contains('show') ? '프리셋 관리자 열림' : '프리셋 관리자 닫힘');
+  }
+});
+qs('#presetCloseBtn').onclick = () => qs('#presetPanel').classList.remove('show');
+qs('#downloadPresetBtn').onclick = async () => {
+  if (!state.models.length) return toast('저장할 모델이 없습니다');
+  const btn = qs('#downloadPresetBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'ZIP 생성 중...';
+  try {
+    const blob = await createSceneBundleBlob();
+    const filename = `${sanitizePresetName(qs('#presetName').value || 'scene-bundle')}.zip`;
+    downloadBlobFile(filename, blob);
+    toast('장면 ZIP이 저장되었습니다');
+  } catch (err) {
+    console.error(err);
+    toast(err.message || '장면 ZIP 저장 실패');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+};
+qs('#loadPresetFileBtn').onclick = () => qs('#presetFileInput').click();
+qs('#presetFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    await loadSceneBundleFromFile(file);
+  } catch (err) {
+    console.error(err);
+    toast(err.message || '장면 ZIP을 읽지 못했습니다');
+  }
+  e.target.value = '';
+});
+
+renderer.domElement.addEventListener('touchmove', e => e.preventDefault(), { passive:false });
+applyTheme(); qs('#themeBtn').classList.toggle('active', state.theme === 'light'); setFloorMode(state.floorMode, false); syncLightAngle(DEFAULT_LIGHT.angle); syncLightHeight(DEFAULT_LIGHT.height); syncIntensity(DEFAULT_LIGHT.intensity); syncPointLightIntensity(state.pointLightIntensity); syncRimLightIntensity(state.rimLightIntensity); setPointLightEnabled(state.pointLightOn, false); setRimLightEnabled(state.rimLightOn, false); syncFloorPlacementButton(); syncPerspectiveBoxButton(); syncFullscreenButton(); setEmpty(); renderList(); updateTextureUI(); refreshSelectedMaterialSliders(); applyModeUi(); bootScene();
+
+(function loop(){ requestAnimationFrame(loop); controls.update(); updateGlassShadowOpacity(); if (!state.suspendReflections && (state.reflectionTick++ % 4) === 0 && needsReflectionCapture()) updateReflectionCapture(); renderer.render(scene, camera); })();
+</script>
+</body>
+</html>
